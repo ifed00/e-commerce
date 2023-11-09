@@ -1,20 +1,13 @@
-from decimal import Decimal
-
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
-
-
-def validate_percent(input_data: Decimal) -> None:
-    if input_data < 0 or input_data > 100:
-        raise ValidationError(f'{input_data = }, but should be positive and less or equal to 100',
-                              code = 'out_of_range')
+from .validators import validate_percent, validate_resolution
 
 
 class Product(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     name = models.CharField(max_length=255)
+    manufacturer = models.CharField(max_length=255)
     description = models.TextField()
     discount_percent = models.DecimalField(max_digits=5, decimal_places=2, validators=[validate_percent])
     picture = models.ImageField(upload_to='products')
@@ -32,3 +25,35 @@ class Product(models.Model):
         indexes = [
             models.Index(fields=["details_content_type", "details_id"]),
         ]
+
+
+class BaseDetails(models.Model):
+    class Meta:
+        abstract = True
+
+
+class PhoneDetails(BaseDetails):
+    memory_KB = models.PositiveIntegerField()
+    display_resolution = models.CharField(max_length=16, validators=[validate_resolution])
+    camera_resolution = models.CharField(max_length=16, validators=[validate_resolution])
+    color = models.CharField(max_length=32)
+
+
+class FridgeDetails(BaseDetails):
+    EU_ENERGY_LABEL_CHOICES = [
+        ('A+++', 'A+++'),
+        ('A++', 'A++'),
+        ('A+', 'A+'),
+        ('A', 'A'),
+        ('B', 'B'),
+        ('C', 'C'),
+        ('D', 'D'),
+        ('E', 'E'),
+        ('F', 'F'),
+        ('G', 'G')
+    ]
+
+    volume_liters = models.PositiveIntegerField()
+    has_freezer = models.BooleanField()
+    color = models.CharField(max_length=32, default='White')
+    EU_energy_label = models.CharField(max_length=8, choices=EU_ENERGY_LABEL_CHOICES)
