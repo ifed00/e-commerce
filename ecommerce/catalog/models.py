@@ -11,6 +11,12 @@ class Category(models.Model):
 
     details_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = 'categories'
+
 
 class Product(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
@@ -29,6 +35,9 @@ class Product(models.Model):
     details_id = models.PositiveIntegerField()
     details_object = GenericForeignKey("details_content_type", "details_id")
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         indexes = [
             models.Index(fields=["details_content_type", "details_id"]),
@@ -45,6 +54,9 @@ class PhoneDetails(BaseDetails):
     display_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     camera_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     color = models.CharField(max_length=32)
+
+    class Meta:
+        verbose_name_plural = 'phone details'
 
 
 class FridgeDetails(BaseDetails):
@@ -65,3 +77,6 @@ class FridgeDetails(BaseDetails):
     has_freezer = models.BooleanField()
     color = models.CharField(max_length=32, default='White')
     EU_energy_label = models.CharField(max_length=8, choices=EU_ENERGY_LABEL_CHOICES)
+
+    class Meta:
+        verbose_name_plural = 'fridge details'
