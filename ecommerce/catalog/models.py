@@ -4,6 +4,14 @@ from django.contrib.contenttypes.models import ContentType
 from .validators import validate_percent, validate_resolution
 
 
+class Category(models.Model):
+    name = models.CharField(max_length=255)
+    slug = models.SlugField(max_length=255)
+    picture = models.ImageField(upload_to='categories')
+
+    details_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+
+
 class Product(models.Model):
     price = models.DecimalField(max_digits=8, decimal_places=2)
     name = models.CharField(max_length=255)
