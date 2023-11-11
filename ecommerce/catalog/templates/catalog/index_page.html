@@ -1,0 +1,10 @@
+{% block leftmenu %}
+    <div>Categories:</div>
+    <ul>
+    {% for cat in categories %}
+        <li>
+            <div>{{ cat.name }}</div>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock %}

@@ -1,7 +1,15 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.utils.timezone import now
+
 from .validators import validate_percent, validate_resolution
+
+
+class ProductManager(models.Manager):
+    """ Only published products """
+    def get_queryset(self):
+        return super().get_queryset().filter(published_at__lte=now())
 
 
 class Category(models.Model):
@@ -39,6 +47,9 @@ class Product(models.Model):
 
     def __str__(self):
         return self.name
+
+    objects = models.Manager()
+    published = ProductManager()
 
     class Meta:
         indexes = [
