@@ -8,3 +8,14 @@
     {% endfor %}
     </ul>
 {% endblock leftmenu %}
+
+{% block filtermenu %}
+    <div>Filters:</div>
+    <ul>
+    {% for filter in filter_widgets %}
+        <li>
+            <div>{{ filter.get_html }}</div>
+        </li>
+    {% endfor %}
+    </ul>
+{% endblock filtermenu %}
