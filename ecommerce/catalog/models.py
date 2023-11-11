@@ -31,6 +31,8 @@ class Product(models.Model):
     published_at = models.DateTimeField()
     updated_at = models.DateTimeField(auto_now=True)
 
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+
     details_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     details_id = models.PositiveIntegerField()
     details_object = GenericForeignKey("details_content_type", "details_id")
