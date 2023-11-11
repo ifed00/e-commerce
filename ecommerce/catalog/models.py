@@ -58,6 +58,9 @@ class Product(models.Model):
 
 
 class BaseDetails(models.Model):
+    def get_short_details(self) -> str:
+        raise NotImplementedError
+
     class Meta:
         abstract = True
 
@@ -67,6 +70,9 @@ class PhoneDetails(BaseDetails):
     display_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     camera_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     color = models.CharField(max_length=32)
+
+    def get_short_details(self) -> str:
+        return f"{self.color}/{self.display_resolution}/{int(self.memory_KB) / 1024 / 1024}GB"
 
     class Meta:
         verbose_name_plural = 'phone details'
@@ -90,6 +96,9 @@ class FridgeDetails(BaseDetails):
     has_freezer = models.BooleanField()
     color = models.CharField(max_length=32, default='White')
     EU_energy_label = models.CharField(max_length=8, choices=EU_ENERGY_LABEL_CHOICES)
+
+    def get_short_details(self) -> str:
+        return f"{self.color}/{self.volume_liters}L/{self.EU_energy_label}/{'freezer' if self.has_freezer else 'no freezer'}"
 
     class Meta:
         verbose_name_plural = 'fridge details'

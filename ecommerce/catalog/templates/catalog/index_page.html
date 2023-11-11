@@ -1,10 +1,10 @@
-{% block leftmenu %}
+{% block mainlist %}
     <div>Categories:</div>
     <ul>
     {% for cat in categories %}
         <li>
-            <div>{{ cat.name }}</div>
+            <a href="{% url 'category' cat.slug %}">{{ cat.name }}</a>
         </li>
     {% endfor %}
     </ul>
-{% endblock %}
+{% endblock mainlist %}
