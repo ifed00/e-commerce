@@ -19,18 +19,22 @@ class CategoryView(ListView):  # TODO: add filter products feature
 
     def get_queryset(self):
         cat = get_object_or_404(Category, slug=self.kwargs['slug'])
-        self.products = Product.published.filter(category_id=cat.pk).prefetch_related('details_object')
-        return self.products
+        return Product.published.filter(category_id=cat.pk).prefetch_related('details_object')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        factory = FilterWidgetFactory()
         context['filter_widgets'] = []
+
+        factory = FilterWidgetFactory()
         context['filter_widgets'].append(
             factory(Product,
                     'price',
                     FilterWidgetFactory.Filters.BOUND,
-                    queryset=self.products,
-                    name='Price')
+                    queryset=self.object_list
+                    )
         )
+
+        for widget in context['filter_widgets']:
+            widget.parse(self.request.GET)
+
         return context
