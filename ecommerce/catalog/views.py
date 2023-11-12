@@ -33,6 +33,13 @@ class CategoryView(ListView):  # TODO: add filter products feature
                     queryset=self.object_list
                     )
         )
+        context['filter_widgets'].append(
+            factory(Product,
+                    'manufacturer',
+                    FilterWidgetFactory.Filters.DYNAMIC_CHOICES,
+                    queryset=self.object_list
+                    )
+        )
 
         for widget in context['filter_widgets']:
             widget.parse(self.request.GET)
