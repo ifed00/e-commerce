@@ -59,6 +59,7 @@ class Product(models.Model):
 
 class BaseDetails(models.Model):
     def get_short_details(self) -> str:
+        """ Returns short string describing most important characteristics (format A/B/C) """
         raise NotImplementedError
 
     class Meta:

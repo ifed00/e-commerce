@@ -24,6 +24,7 @@ class ProductAdmin(admin.ModelAdmin):
             url = reverse(f'admin:{meta.app_label}_{meta.model_name}_add')
             text = f'Add new {meta.model_name}'
 
+        # format_html would essential overkill be here, since our string is not user controlled
         return mark_safe(f'<a href={url}>{text}</a>')
 
 
