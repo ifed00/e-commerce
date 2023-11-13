@@ -1,8 +1,10 @@
 from django.db import models
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
 
+from .filter_widgets import FilterWidgetFactory, FilterableMixin
+Filters = FilterWidgetFactory.Filters
 from .validators import validate_percent, validate_resolution
 
 
@@ -57,10 +59,12 @@ class Product(models.Model):
         ]
 
 
-class BaseDetails(models.Model):
+class BaseDetails(FilterableMixin, models.Model):
     def get_short_details(self) -> str:
         """ Returns short string describing most important characteristics (format A/B/C) """
         raise NotImplementedError
+
+    generic_relation_name = None
 
     class Meta:
         abstract = True
@@ -71,6 +75,18 @@ class PhoneDetails(BaseDetails):
     display_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     camera_resolution = models.CharField(max_length=16, validators=[validate_resolution])
     color = models.CharField(max_length=32)
+
+    generic_relation_name = 'phones'
+
+    product = GenericRelation(Product, related_query_name=generic_relation_name,
+                              content_type_field='details_content_type', object_id_field='details_id')
+
+    FILTERS = [
+        ('memory_KB', Filters.BOUND),
+        ('display_resolution', Filters.DYNAMIC_CHOICES),
+        ('camera_resolution', Filters.DYNAMIC_CHOICES),
+        ('color', Filters.DYNAMIC_CHOICES)
+    ]
 
     def get_short_details(self) -> str:
         return f"{self.color}/{self.display_resolution}/{int(self.memory_KB) / 1024 / 1024}GB"
@@ -97,6 +113,17 @@ class FridgeDetails(BaseDetails):
     has_freezer = models.BooleanField()
     color = models.CharField(max_length=32, default='White')
     EU_energy_label = models.CharField(max_length=8, choices=EU_ENERGY_LABEL_CHOICES)
+
+    generic_relation_name = 'fridges'
+    product = GenericRelation(Product, related_query_name=generic_relation_name,
+                              content_type_field='details_content_type', object_id_field='details_id')
+
+    FILTERS = [
+        ('volume_liters', Filters.BOUND),
+        ('has_freezer', Filters.DYNAMIC_CHOICES),  # TODO: add BOOL_CHOICES
+        ('EU_energy_label', Filters.DYNAMIC_CHOICES),  # TODO: add STATIC_CHOICES
+        ('color', Filters.DYNAMIC_CHOICES)
+    ]
 
     def get_short_details(self) -> str:
         return f"{self.color}/{self.volume_liters}L/{self.EU_energy_label}/{'freezer' if self.has_freezer else 'no freezer'}"

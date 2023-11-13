@@ -18,8 +18,8 @@ class CategoryView(ListView):  # TODO: add filter products feature
     context_object_name = 'products'
 
     def pre_get_queryset(self):
-        cat = get_object_or_404(Category, slug=self.kwargs['slug'])
-        return Product.published.filter(category_id=cat.pk).prefetch_related('details_object')
+        self.category = get_object_or_404(Category, slug=self.kwargs['slug'])
+        return Product.published.filter(category_id=self.category.pk).prefetch_related('details_object')
 
     def get_queryset(self):
         return self.objects_list
@@ -44,6 +44,12 @@ class CategoryView(ListView):  # TODO: add filter products feature
                     queryset=self.objects_list
                     )
         )
+
+        related_model_class = self.category.details_content_type.model_class()
+        factory.add_filters_for_related_model(self.filters,
+                                              related_model_class.generic_relation_name,
+                                              related_model_class,
+                                              self.objects_list)
 
         for f in self.filters:
             f.parse(self.request.GET)

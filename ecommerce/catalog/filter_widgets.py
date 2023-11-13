@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import decimal
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from enum import Enum, auto
 
 from django.db.models import Model, QuerySet
@@ -21,7 +21,7 @@ class FilterWidget(ABC):
                  **kwargs):
         self.field = field
         self.related_object = related_object
-        self.query_name = (self.related_object + self.field) if self.related_object else self.field
+        self.query_name = (self.related_object + '__' + self.field) if self.related_object else self.field
         if queryset is None:
             raise ValueError(f'No queryset provided for filter {repr(self)}')
         self.queryset = queryset.all()
@@ -57,16 +57,18 @@ class FilterBound(FilterWidget):
         self.GET_key_min = self.name + '_min'
         self.GET_key_max = self.name + '_max'
 
+    @staticmethod
+    def get_decimal_or_default(get_dict: QueryDict, get_key: str, default: Decimal) -> Decimal:
+        try:
+            user_input = get_dict[get_key]
+            return Decimal(user_input)
+        # if get_key is not in get_dict or cannot be converted to Decimal return default
+        except (KeyError, decimal.InvalidOperation):
+            return default
+
     def parse(self, get_dict: QueryDict) -> None:
-        # TODO: refactor!!!
-        try:
-            self.max = min(Decimal(get_dict.get(self.GET_key_max, self.max)), self.upper_bound)
-        except decimal.InvalidOperation:  # if GET key cannot be converted to Decimal use default (do nothing)
-            pass
-        try:
-            self.min = max(Decimal(get_dict.get(self.GET_key_min, self.min)), self.lower_bound)
-        except decimal.InvalidOperation:  # if GET key cannot be converted to Decimal use default (do nothing)
-            pass
+        self.max = min(self.get_decimal_or_default(get_dict, self.GET_key_max, self.max), self.upper_bound)
+        self.min = max(self.get_decimal_or_default(get_dict, self.GET_key_min, self.min), self.lower_bound)
 
         if self.min > self.max:
             self.max = self.upper_bound
@@ -90,8 +92,8 @@ class FiterDynamicChoices(FilterWidget):
                  queryset: QuerySet,
                  **kwargs):
         super().__init__(field, queryset=queryset, **kwargs)
-        # Note using .distinct(field) is only allowed with PostgreSQL (unfortunately)
-        self.options = {option: False for option in self.queryset.values_list(self.query_name, flat=True)}
+        # Note: using .distinct(field) is only allowed with PostgreSQL (unfortunately)
+        self.options = {str(option): False for option in self.queryset.values_list(self.query_name, flat=True)}
         self.show_all_options = True
         self.GET_key = self.name
 
@@ -128,6 +130,10 @@ class FiterDynamicChoices(FilterWidget):
         return result
 
 
+class FilterableMixin:
+    FILTERS = []
+
+
 class FilterWidgetFactory:
     class Filters(Enum):
         BOUND = auto()
@@ -135,13 +141,22 @@ class FilterWidgetFactory:
 
     def __call__(self, field: str,
                  filter_type: Filters,
-                 *,
-                 queryset: Optional[QuerySet] = None,
+                 queryset: QuerySet,
                  **kwargs):
         match filter_type:
             case self.Filters.BOUND:
-                return FilterBound(field, queryset=queryset, **kwargs)
+                filter_constructor = FilterBound
             case self.Filters.DYNAMIC_CHOICES:
-                return FiterDynamicChoices(field, queryset=queryset, **kwargs)
+                filter_constructor = FiterDynamicChoices
             case _:
                 raise NotImplementedError
+
+        return filter_constructor(field, queryset=queryset, **kwargs)
+
+    def add_filters_for_related_model(self,
+                                      filters_list: List[FilterWidget],
+                                      related_name: str,
+                                      related_model: FilterableMixin,
+                                      queryset: QuerySet):
+        for field, filter_type in related_model.FILTERS:
+            filters_list.append(self(field, filter_type, queryset, related_object=related_name))
