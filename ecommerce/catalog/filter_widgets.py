@@ -10,20 +10,29 @@ from django.http import QueryDict
 
 
 class FilterWidget(ABC):
+    """ Base class for filters.
+    Filters parse GET-queries and filter QuerySets accordingly. Also can present itself using get_html method """
     @abstractmethod
-    def __init__(self, model: Model, field: str,
-                 *,
-                 queryset: Optional[QuerySet] = None,
+    def __init__(self,
+                 field: str,
+                 queryset: QuerySet,
+                 name: Optional[str] = None,
+                 related_object: Optional[str] = None,
                  **kwargs):
-        self.model = model
         self.field = field
+        self.related_object = related_object
+        self.query_name = (self.related_object + self.field) if self.related_object else self.field
         if queryset is None:
-            queryset = self.model._base_manager.all()
+            raise ValueError(f'No queryset provided for filter {repr(self)}')
         self.queryset = queryset.all()
-        self.name = kwargs.get('name', field)
+        self.name = name if name else field
 
     @abstractmethod
-    def parse(self, get_dict) -> None:
+    def parse(self, get_dict: QueryDict) -> None:
+        pass
+
+    @abstractmethod
+    def filter(self, queryset: QuerySet) -> QuerySet:
         pass
 
     @abstractmethod
@@ -32,13 +41,13 @@ class FilterWidget(ABC):
 
 
 class FilterBound(FilterWidget):
-    def __init__(self, model: Model, field: str,
-                 *,
-                 queryset: Optional[QuerySet] = None,
+    def __init__(self,
+                 field: str,
+                 queryset: QuerySet = None,
                  **kwargs):
-        super().__init__(model, field, queryset=queryset, **kwargs)
+        super().__init__(field, queryset=queryset, **kwargs)
 
-        bounds_dict = self.queryset.aggregate(min=Min(field), max=Max(field))
+        bounds_dict = self.queryset.aggregate(min=Min(self.query_name), max=Max(self.query_name))
         self.lower_bound = bounds_dict['min']
         self.upper_bound = bounds_dict['max']
 
@@ -63,18 +72,26 @@ class FilterBound(FilterWidget):
             self.max = self.upper_bound
             self.min = self.lower_bound
 
+    def filter(self, queryset: QuerySet) -> QuerySet:
+        lookups = dict()
+        if self.min != self.lower_bound:
+            lookups[self.query_name + '__gte'] = self.min
+        if self.max != self.upper_bound:
+            lookups[self.query_name + '__lte'] = self.max
+        return queryset.filter(**lookups)
+
     def get_html(self):
         return f'{self.name}: {self.lower_bound}-{self.upper_bound} | min {self.min}, max {self.max}'
 
 
 class FiterDynamicChoices(FilterWidget):
-    def __init__(self, model: Model, field: str,
-                 *,
-                 queryset: Optional[QuerySet] = None,
+    def __init__(self,
+                 field: str,
+                 queryset: QuerySet,
                  **kwargs):
-        super().__init__(model, field, queryset=queryset, **kwargs)
+        super().__init__(field, queryset=queryset, **kwargs)
         # Note using .distinct(field) is only allowed with PostgreSQL (unfortunately)
-        self.options = {option: False for option in self.queryset.values_list(self.field, flat=True)}
+        self.options = {option: False for option in self.queryset.values_list(self.query_name, flat=True)}
         self.show_all_options = True
         self.GET_key = self.name
 
@@ -88,6 +105,15 @@ class FiterDynamicChoices(FilterWidget):
             if option in self.options:
                 self.options[option] = True
                 self.show_all_options = False
+
+    def filter(self, queryset: QuerySet) -> QuerySet:
+        if self.show_all_options:
+            return queryset
+
+        user_options = [option for option, show in self.options.items() if show]
+        lookup = dict()
+        lookup[self.query_name + '__in'] = user_options
+        return queryset.filter(**lookup)
 
     def get_html(self):
         result = self.name + ': ' + ', '.join(self.options.keys()) + ' | '
@@ -107,16 +133,15 @@ class FilterWidgetFactory:
         BOUND = auto()
         DYNAMIC_CHOICES = auto()
 
-    def __call__(self, model: Model,
-                 field: str,
+    def __call__(self, field: str,
                  filter_type: Filters,
                  *,
                  queryset: Optional[QuerySet] = None,
                  **kwargs):
         match filter_type:
             case self.Filters.BOUND:
-                return FilterBound(model, field, queryset=queryset, **kwargs)
+                return FilterBound(field, queryset=queryset, **kwargs)
             case self.Filters.DYNAMIC_CHOICES:
-                return FiterDynamicChoices(model, field, queryset=queryset, **kwargs)
+                return FiterDynamicChoices(field, queryset=queryset, **kwargs)
             case _:
                 raise NotImplementedError
