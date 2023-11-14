@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import decimal
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Mapping
 from enum import Enum, auto
 
 from django.db.models import Model, QuerySet
@@ -28,7 +28,7 @@ class FilterWidget(ABC):
         self.name = name if name else field
 
     @abstractmethod
-    def parse(self, get_dict: QueryDict) -> None:
+    def parse(self, get_dict: Mapping[str, str]) -> None:
         pass
 
     @abstractmethod
@@ -43,7 +43,7 @@ class FilterWidget(ABC):
 class FilterBound(FilterWidget):
     def __init__(self,
                  field: str,
-                 queryset: QuerySet = None,
+                 queryset: QuerySet,
                  **kwargs):
         super().__init__(field, queryset=queryset, **kwargs)
 
@@ -58,7 +58,7 @@ class FilterBound(FilterWidget):
         self.GET_key_max = self.name + '_max'
 
     @staticmethod
-    def get_decimal_or_default(get_dict: QueryDict, get_key: str, default: Decimal) -> Decimal:
+    def get_decimal_or_default(get_dict: Mapping[str, str], get_key: str, default: Decimal) -> Decimal:
         try:
             user_input = get_dict[get_key]
             return Decimal(user_input)
@@ -66,7 +66,7 @@ class FilterBound(FilterWidget):
         except (KeyError, decimal.InvalidOperation):
             return default
 
-    def parse(self, get_dict: QueryDict) -> None:
+    def parse(self, get_dict: Mapping[str, str]) -> None:
         self.max = min(self.get_decimal_or_default(get_dict, self.GET_key_max, self.max), self.upper_bound)
         self.min = max(self.get_decimal_or_default(get_dict, self.GET_key_min, self.min), self.lower_bound)
 
@@ -97,7 +97,7 @@ class FiterDynamicChoices(FilterWidget):
         self.show_all_options = True
         self.GET_key = self.name
 
-    def parse(self, get_dict) -> None:
+    def parse(self, get_dict: Mapping[str, str]) -> None:
         user_input = get_dict.get(self.GET_key)
         if user_input is None:
             return
