@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import decimal
 from decimal import Decimal
-from typing import Optional, List, Mapping
+from typing import Optional, List, Mapping, Tuple
 from enum import Enum, auto
 
 from django.db.models import Model, QuerySet
@@ -158,6 +158,16 @@ class FilterBoolChoices(FilterWidget):
         return f"{self.name}: True or False: { 'Any' if self.choice is None else self.choice }"
 
 
+class FilterStaticChoices(FilterWidget):
+    def __init__(self, choices: List[Tuple], *args, **kwargs):
+        """
+        :param: choices is django-style choices of the field
+        """
+        super().__init__(*args, **kwargs)
+        self.choices = choices
+        self.GET_key = self.name
+
+
 class FilterableMixin:
     FILTERS = []
 
@@ -167,6 +177,7 @@ class FilterWidgetFactory:
         BOUND = auto()
         DYNAMIC_CHOICES = auto()
         BOOL_CHOICES = auto()
+        STATIC_CHOICES = auto()
 
     def __call__(self, field: str,
                  filter_type: Filters,
@@ -190,4 +201,7 @@ class FilterWidgetFactory:
                                       related_model: FilterableMixin,
                                       queryset: QuerySet):
         for field, filter_type in related_model.FILTERS:
-            filters_list.append(self(field, filter_type, queryset, related_object=related_name))
+            choices = None
+            if filter_type == FilterWidgetFactory.Filters.STATIC_CHOICES:
+                choices = related_model.__getattribute__(related_model, field).field.choices
+            filters_list.append(self(field, filter_type, queryset, related_object=related_name, choices=choices))

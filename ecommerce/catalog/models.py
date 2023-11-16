@@ -121,7 +121,7 @@ class FridgeDetails(BaseDetails):
     FILTERS = [
         ('volume_liters', Filters.BOUND),
         ('has_freezer', Filters.BOOL_CHOICES),
-        ('EU_energy_label', Filters.DYNAMIC_CHOICES),  # TODO: add STATIC_CHOICES
+        ('EU_energy_label', Filters.STATIC_CHOICES),  # TODO: add STATIC_CHOICES
         ('color', Filters.DYNAMIC_CHOICES)
     ]
 
