@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView
 
-from .filter_widgets import FilterWidgetFactory
+from .filter_widgets import FilterFactory, Filters
 from .models import Category, Product
 
 # Create your views here.
@@ -30,26 +30,16 @@ class CategoryView(ListView):  # TODO: add filter products feature
         return context
 
     def gather_filters(self):
-        factory = FilterWidgetFactory()
-        self.filters = []
-        self.filters.append(
-            factory('price',
-                    FilterWidgetFactory.Filters.BOUND,
-                    queryset=self.objects_list
-                    )
-        )
-        self.filters.append(
-            factory('manufacturer',
-                    FilterWidgetFactory.Filters.DYNAMIC_CHOICES,
-                    queryset=self.objects_list
-                    )
-        )
+        self.filters = [
+            FilterFactory.produce('price', Filters.BOUND, queryset=self.objects_list),
+            FilterFactory.produce('manufacturer', Filters.DYNAMIC_CHOICES, queryset=self.objects_list)
+        ]
 
         related_model_class = self.category.details_content_type.model_class()
-        factory.add_filters_for_related_model(self.filters,
-                                              related_model_class.generic_relation_name,
-                                              related_model_class,
-                                              self.objects_list)
+        FilterFactory.add_filters_for_related_model(self.filters,
+                                                    related_model_class.generic_relation_name,
+                                                    related_model_class,
+                                                    self.objects_list)
 
         for f in self.filters:
             f.parse(self.request.GET)

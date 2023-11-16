@@ -3,8 +3,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
 
-from .filter_widgets import FilterWidgetFactory, FilterableMixin
-Filters = FilterWidgetFactory.Filters
+from .filter_widgets import FilterFactory, FilterableMixin, Filters
 from .validators import validate_percent, validate_resolution
 
 

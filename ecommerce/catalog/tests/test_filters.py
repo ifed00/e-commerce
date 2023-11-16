@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import make_aware
 
 from catalog.models import Product, PhoneDetails, FridgeDetails, Category
-from catalog.filter_widgets import FilterBound, FilterDynamicChoices, FilterBoolChoices, FilterStaticChoices
+from catalog.filter_widgets import FilterBound, FilterDynamicChoices, FilterBool, FilterStaticChoices
 
 
 def common_setup(cls):
@@ -253,7 +253,7 @@ class TestFilterBound(TestCase):
 
         related_object_name = category_phones.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterBound('memory_KB', qs, related_object=related_object_name)
+        test_filter = FilterBound('memory_KB', qs, query_to=related_object_name)
         mem_750mb = '786432'
         mem_1250mb = '1310720'
         GET_dict = dict(memory_KB_min=mem_750mb, memory_KB_max=mem_1250mb)
@@ -271,7 +271,7 @@ class TestFilterBound(TestCase):
 
         related_object_name = category_phones.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterBound('memory_KB', qs, name='mem', related_object=related_object_name)
+        test_filter = FilterBound('memory_KB', qs, name='mem', query_to=related_object_name)
         mem_750mb = '786432'
         mem_1250mb = '1310720'
         GET_dict = dict(mem_min=mem_750mb, mem_max=mem_1250mb)
@@ -371,7 +371,7 @@ class TestFilterDynamicChoices(TestCase):
 
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterDynamicChoices('color', qs, related_object=related_object_name)
+        test_filter = FilterDynamicChoices('color', qs, query_to=related_object_name)
         GET_dict = dict(color='white')
 
         test_filter.parse(GET_dict)
@@ -389,7 +389,7 @@ class TestFilterDynamicChoices(TestCase):
 
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterDynamicChoices('color', qs, related_object=related_object_name, name='hull_color')
+        test_filter = FilterDynamicChoices('color', qs, query_to=related_object_name, name='hull_color')
         GET_dict = dict(hull_color='black')
 
         test_filter.parse(GET_dict)
@@ -406,13 +406,13 @@ class TestFilterBoolChoices(TestCase):
     def setUpTestData(cls):
         common_setup(cls)
 
-    def explicit_setup(self) -> Tuple[QuerySet, FilterBoolChoices]:
+    def explicit_setup(self) -> Tuple[QuerySet, FilterBool]:
         category_fridges = self.available_categories[1]
         qs = Product.objects.filter(category_id=category_fridges.pk)
 
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterBoolChoices('has_freezer', qs, related_object=related_object_name)
+        test_filter = FilterBool('has_freezer', query_to=related_object_name)
 
         return qs, test_filter
 
@@ -465,8 +465,7 @@ class TestFilterBoolChoices(TestCase):
 
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
 
-        test_filter = FilterBoolChoices('has_freezer', qs,
-                                        related_object=related_object_name, name='what_about_freezer')
+        test_filter = FilterBool('has_freezer', query_to=related_object_name, name='what_about_freezer')
 
         GET_dict = dict(what_about_freezer='1')
 
@@ -492,7 +491,7 @@ class TestFilterStaticChoices(TestCase):
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
         choices = category_fridges.details_content_type.model_class().EU_ENERGY_LABEL_CHOICES
 
-        test_filter = FilterStaticChoices('EU_energy_label', qs, choices=choices, related_object=related_object_name)
+        test_filter = FilterStaticChoices('EU_energy_label', choices=choices, query_to=related_object_name)
 
         return qs, test_filter
 
@@ -567,8 +566,8 @@ class TestFilterStaticChoices(TestCase):
         related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
         choices = category_fridges.details_content_type.model_class().EU_ENERGY_LABEL_CHOICES
 
-        test_filter = FilterStaticChoices('EU_energy_label', qs, choices=choices,
-                                          related_object=related_object_name, name='EUlabel')
+        test_filter = FilterStaticChoices('EU_energy_label', choices=choices,
+                                          query_to=related_object_name, name='EUlabel')
         GET_dict = dict(EUlabel='A++,A')
 
         test_filter.parse(GET_dict)
