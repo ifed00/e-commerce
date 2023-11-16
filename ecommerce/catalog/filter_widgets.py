@@ -130,6 +130,34 @@ class FilterDynamicChoices(FilterWidget):
         return result
 
 
+class FilterBoolChoices(FilterWidget):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.GET_key = self.name
+        self.choice: Optional[bool] = None
+
+    def parse(self, get_dict: Mapping[str, str]) -> None:
+        try:
+            user_input = int(get_dict[self.GET_key])
+        except (KeyError, ValueError):
+            return  # use default
+        if user_input == 1:
+            self.choice = True
+        elif user_input == 0:
+            self.choice = False
+        # else use default
+
+    def filter(self, queryset: QuerySet) -> QuerySet:
+        if self.choice is None:
+            return queryset
+        lookup = dict()
+        lookup[self.query_name] = self.choice
+        return queryset.filter(**lookup)
+
+    def get_html(self):
+        return f"{self.name}: True or False: { 'Any' if self.choice is None else self.choice }"
+
+
 class FilterableMixin:
     FILTERS = []
 
@@ -138,6 +166,7 @@ class FilterWidgetFactory:
     class Filters(Enum):
         BOUND = auto()
         DYNAMIC_CHOICES = auto()
+        BOOL_CHOICES = auto()
 
     def __call__(self, field: str,
                  filter_type: Filters,
@@ -148,6 +177,8 @@ class FilterWidgetFactory:
                 filter_constructor = FilterBound
             case self.Filters.DYNAMIC_CHOICES:
                 filter_constructor = FilterDynamicChoices
+            case self.Filters.BOOL_CHOICES:
+                filter_constructor = FilterBoolChoices
             case _:
                 raise NotImplementedError
 
