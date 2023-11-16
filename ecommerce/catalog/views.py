@@ -1,5 +1,6 @@
+from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.views.generic import ListView
+from django.views.generic import ListView, DetailView
 
 from .filter_widgets import FilterFactory, Filters
 from .models import Category, Product
@@ -55,3 +56,23 @@ class CategoryView(ListView):  # TODO: add filter products feature
         self.apply_filters()
 
         return super().get(request, *args, **kwargs)
+
+
+class ProductView(DetailView):
+    template_name = 'catalog/product_details.html'
+    pk_url_kwarg = 'id'
+    context_object_name = 'product'
+    queryset = Product.published.all()
+
+    def get_object(self, queryset=None):
+        product = super().get_object()
+
+        category = get_object_or_404(Category, slug=self.kwargs['cat_slug'])
+
+        if product.category_id != category.pk:
+            raise Http404("Wrong category used!")
+
+        return product
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(details=self.object.details_object)
