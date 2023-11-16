@@ -86,15 +86,16 @@ class FilterBound(FilterWidget):
         return f'{self.name}: {self.lower_bound}-{self.upper_bound} | min {self.min}, max {self.max}'
 
 
-class FilterDynamicChoices(FilterWidget):
+class FilterChoicesWidget(FilterWidget):
+    @abstractmethod
     def __init__(self,
                  field: str,
                  queryset: QuerySet,
                  **kwargs):
         super().__init__(field, queryset=queryset, **kwargs)
         # Note: using .distinct(field) is only allowed with PostgreSQL (unfortunately)
-        self.options = {str(option): False for option in self.queryset.values_list(self.query_name, flat=True)}
-        self.show_all_options = True
+        self.choices = {str(option): False for option in self.queryset.values_list(self.query_name, flat=True)}
+        self.show_all_choices = True
         self.GET_key = self.name
 
     def parse(self, get_dict: Mapping[str, str]) -> None:
@@ -102,32 +103,41 @@ class FilterDynamicChoices(FilterWidget):
         if user_input is None:
             return
 
-        user_options = user_input.split(',')
-        for option in user_options:
-            if option in self.options:
-                self.options[option] = True
-                self.show_all_options = False
+        user_choices = user_input.split(',')
+        for choice in user_choices:
+            if choice in self.choices:
+                self.choices[choice] = True
+                self.show_all_choices = False
 
     def filter(self, queryset: QuerySet) -> QuerySet:
-        if self.show_all_options:
+        if self.show_all_choices:
             return queryset
 
-        user_options = [option for option, show in self.options.items() if show]
+        user_choices = [choice for choice, show in self.choices.items() if show]
         lookup = dict()
-        lookup[self.query_name + '__in'] = user_options
+        lookup[self.query_name + '__in'] = user_choices
         return queryset.filter(**lookup)
 
     def get_html(self):
-        result = self.name + ': ' + ', '.join(self.options.keys()) + ' | '
-        if not self.show_all_options:
-            user_options = []
-            for key, show in self.options.items():
+        result = self.name + ': ' + ', '.join(self.choices.keys()) + ' | '
+        if not self.show_all_choices:
+            user_choices = []
+            for key, show in self.choices.items():
                 if show:
-                    user_options.append(key)
-            result += ', '.join(user_options)
+                    user_choices.append(key)
+            result += ', '.join(user_choices)
         else:
             result += 'all'
         return result
+
+
+class FilterDynamicChoices(FilterChoicesWidget):
+    def __init__(self,
+                 field: str,
+                 queryset: QuerySet,
+                 **kwargs):
+        super().__init__(field, queryset=queryset, **kwargs)
+        self.options = {str(option): False for option in self.queryset.values_list(self.query_name, flat=True)}
 
 
 class FilterBoolChoices(FilterWidget):
@@ -158,14 +168,13 @@ class FilterBoolChoices(FilterWidget):
         return f"{self.name}: True or False: { 'Any' if self.choice is None else self.choice }"
 
 
-class FilterStaticChoices(FilterWidget):
-    def __init__(self, choices: List[Tuple], *args, **kwargs):
+class FilterStaticChoices(FilterChoicesWidget):
+    def __init__(self, field: str, queryset: QuerySet, choices: List[Tuple], **kwargs):
         """
         :param: choices is django-style choices of the field
         """
-        super().__init__(*args, **kwargs)
-        self.choices = choices
-        self.GET_key = self.name
+        super().__init__(field, queryset, **kwargs)
+        self.choices = {key: False for key, _ in choices}
 
 
 class FilterableMixin:
@@ -179,19 +188,21 @@ class FilterWidgetFactory:
         BOOL_CHOICES = auto()
         STATIC_CHOICES = auto()
 
+    _constructors = {
+        Filters.BOUND: FilterBound,
+        Filters.DYNAMIC_CHOICES: FilterDynamicChoices,
+        Filters.BOOL_CHOICES: FilterBoolChoices,
+        Filters.STATIC_CHOICES: FilterStaticChoices
+    }
+
     def __call__(self, field: str,
                  filter_type: Filters,
                  queryset: QuerySet,
                  **kwargs):
-        match filter_type:
-            case self.Filters.BOUND:
-                filter_constructor = FilterBound
-            case self.Filters.DYNAMIC_CHOICES:
-                filter_constructor = FilterDynamicChoices
-            case self.Filters.BOOL_CHOICES:
-                filter_constructor = FilterBoolChoices
-            case _:
-                raise NotImplementedError
+        try:
+            filter_constructor = self._constructors[filter_type]
+        except KeyError:
+            raise NotImplementedError(f"Filter type {filter_type} is not implemented")
 
         return filter_constructor(field, queryset=queryset, **kwargs)
 

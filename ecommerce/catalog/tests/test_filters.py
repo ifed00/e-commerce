@@ -1,11 +1,13 @@
 import datetime
+from typing import Tuple
 
+from django.db.models import QuerySet
 from django.test import TestCase
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import make_aware
 
 from catalog.models import Product, PhoneDetails, FridgeDetails, Category
-from catalog.filter_widgets import FilterBound, FilterDynamicChoices, FilterBoolChoices
+from catalog.filter_widgets import FilterBound, FilterDynamicChoices, FilterBoolChoices, FilterStaticChoices
 
 
 def common_setup(cls):
@@ -404,7 +406,7 @@ class TestFilterBoolChoices(TestCase):
     def setUpTestData(cls):
         common_setup(cls)
 
-    def test_true_choice_filters_correctly(self):
+    def explicit_setup(self) -> Tuple[QuerySet, FilterBoolChoices]:
         category_fridges = self.available_categories[1]
         qs = Product.objects.filter(category_id=category_fridges.pk)
 
@@ -412,6 +414,10 @@ class TestFilterBoolChoices(TestCase):
 
         test_filter = FilterBoolChoices('has_freezer', qs, related_object=related_object_name)
 
+        return qs, test_filter
+
+    def test_true_choice_filters_correctly(self):
+        qs, test_filter = self.explicit_setup()
         GET_dict = dict(has_freezer='1')
 
         test_filter.parse(GET_dict)
@@ -424,13 +430,7 @@ class TestFilterBoolChoices(TestCase):
         self.assertTrue(self.available_products[5] in result)
 
     def test_false_choice_filters_correctly(self):
-        category_fridges = self.available_categories[1]
-        qs = Product.objects.filter(category_id=category_fridges.pk)
-
-        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
-
-        test_filter = FilterBoolChoices('has_freezer', qs, related_object=related_object_name)
-
+        qs, test_filter = self.explicit_setup()
         GET_dict = dict(has_freezer='0')
 
         test_filter.parse(GET_dict)
@@ -442,13 +442,7 @@ class TestFilterBoolChoices(TestCase):
         self.assertTrue(self.available_products[3] in result)
 
     def test_wrong_GET_value_produces_no_filtering(self):
-        category_fridges = self.available_categories[1]
-        qs = Product.objects.filter(category_id=category_fridges.pk)
-
-        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
-
-        test_filter = FilterBoolChoices('has_freezer', qs, related_object=related_object_name)
-
+        qs, test_filter = self.explicit_setup()
         GET_dict = dict(has_freezer='no')
 
         test_filter.parse(GET_dict)
@@ -457,13 +451,7 @@ class TestFilterBoolChoices(TestCase):
         self.assertEqual(qs.count(), 3)
 
     def test_missing_GET_key_produces_no_filtering(self):
-        category_fridges = self.available_categories[1]
-        qs = Product.objects.filter(category_id=category_fridges.pk)
-
-        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
-
-        test_filter = FilterBoolChoices('has_freezer', qs, related_object=related_object_name)
-
+        qs, test_filter = self.explicit_setup()
         GET_dict = dict(what_about_freezer='1')
 
         test_filter.parse(GET_dict)
@@ -490,3 +478,104 @@ class TestFilterBoolChoices(TestCase):
 
         self.assertTrue(self.available_products[4] in result)
         self.assertTrue(self.available_products[5] in result)
+
+
+class TestFilterStaticChoices(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        common_setup(cls)
+
+    def explicit_setup(self) -> Tuple[QuerySet, FilterStaticChoices]:
+        category_fridges = self.available_categories[1]
+        qs = Product.objects.filter(category_id=category_fridges.pk)
+
+        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
+        choices = category_fridges.details_content_type.model_class().EU_ENERGY_LABEL_CHOICES
+
+        test_filter = FilterStaticChoices('EU_energy_label', qs, choices=choices, related_object=related_object_name)
+
+        return qs, test_filter
+
+    def test_one_choice_filters_correctly(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(EU_energy_label='A')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], self.available_products[3])
+
+    def test_two_choices_filters_correctly(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(EU_energy_label='A++,B')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[4] in result)
+        self.assertTrue(self.available_products[5] in result)
+
+    def test_no_choices_produces_no_filtering(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(EU_energy_label='')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 3)
+
+    def test_incorrect_choices_ignored(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(EU_energy_label='SomeBodyOnce,ToldMeTheWorld')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 3)
+
+    def test_incorrect_choices_ignored_correct_still_filter(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(EU_energy_label='WrongClass,A,EvenWorseClass,A++')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[3] in result)
+        self.assertTrue(self.available_products[4] in result)
+
+    def test_missing_GET_key_produces_no_filtering(self):
+        qs, test_filter = self.explicit_setup()
+        GET_dict = dict(unrelated_key='unrelated_info')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 3)
+
+    def test_providing_name_changes_GET_key_name(self):
+        category_fridges = self.available_categories[1]
+        qs = Product.objects.filter(category_id=category_fridges.pk)
+
+        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
+        choices = category_fridges.details_content_type.model_class().EU_ENERGY_LABEL_CHOICES
+
+        test_filter = FilterStaticChoices('EU_energy_label', qs, choices=choices,
+                                          related_object=related_object_name, name='EUlabel')
+        GET_dict = dict(EUlabel='A++,A')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[3] in result)
+        self.assertTrue(self.available_products[4] in result)
