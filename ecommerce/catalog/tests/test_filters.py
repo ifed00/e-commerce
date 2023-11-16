@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import make_aware
 
 from catalog.models import Product, PhoneDetails, FridgeDetails, Category
-from catalog.filter_widgets import FilterBound
+from catalog.filter_widgets import FilterBound, FilterDynamicChoices
 
 
 def common_setup(cls):
@@ -281,3 +281,119 @@ class TestFilterBound(TestCase):
         self.assertEqual(len(result), 1)
         self.assertTrue(self.available_products[1] in result)
 
+
+class TestFilterDynamicChoices(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        common_setup(cls)
+
+    def test_one_choice_filters_correctly(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(manufacturer='Shansung')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], self.available_products[0])
+
+    def test_two_choices_filters_correctly(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(manufacturer='Shansung,Bony')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[0] in result)
+        self.assertTrue(self.available_products[1] in result)
+
+    def test_no_choices_produces_no_filtering(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(manufacturer='')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 6)
+
+    def test_incorrect_choices_ignored(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(manufacturer='NotAManufacturer,AlsoWrong')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 6)
+
+    def test_incorrect_choices_ignored_correct_still_filter(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(manufacturer='POSH,WrongManufacturer,Sentinel,IncorrectManufacturer')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[3] in result)
+        self.assertTrue(self.available_products[5] in result)
+
+    def test_missing_GET_key_produces_no_filtering(self):
+        qs = Product.objects.all()
+
+        test_filter = FilterDynamicChoices('manufacturer', qs)
+        GET_dict = dict(unrelated_key='unrelated_info')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        self.assertEqual(qs.count(), 6)
+
+    def test_filtering_on_related_model_works_correctly(self):
+        category_fridges = self.available_categories[1]
+        qs = Product.objects.filter(category_id=category_fridges.pk)
+
+        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
+
+        test_filter = FilterDynamicChoices('color', qs, related_object=related_object_name)
+        GET_dict = dict(color='white')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 2)
+
+        self.assertTrue(self.available_products[4] in result)
+        self.assertTrue(self.available_products[5] in result)
+
+    def test_providing_name_changes_GET_key_name(self):
+        category_fridges = self.available_categories[1]
+        qs = Product.objects.filter(category_id=category_fridges.pk)
+
+        related_object_name = category_fridges.details_content_type.model_class().generic_relation_name
+
+        test_filter = FilterDynamicChoices('color', qs, related_object=related_object_name, name='hull_color')
+        GET_dict = dict(hull_color='black')
+
+        test_filter.parse(GET_dict)
+        qs = test_filter.filter(qs)
+
+        result = list(qs)
+        self.assertEqual(len(result), 1)
+
+        self.assertTrue(self.available_products[3] in result)

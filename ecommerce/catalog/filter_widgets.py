@@ -86,7 +86,7 @@ class FilterBound(FilterWidget):
         return f'{self.name}: {self.lower_bound}-{self.upper_bound} | min {self.min}, max {self.max}'
 
 
-class FiterDynamicChoices(FilterWidget):
+class FilterDynamicChoices(FilterWidget):
     def __init__(self,
                  field: str,
                  queryset: QuerySet,
@@ -147,7 +147,7 @@ class FilterWidgetFactory:
             case self.Filters.BOUND:
                 filter_constructor = FilterBound
             case self.Filters.DYNAMIC_CHOICES:
-                filter_constructor = FiterDynamicChoices
+                filter_constructor = FilterDynamicChoices
             case _:
                 raise NotImplementedError
 
