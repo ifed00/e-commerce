@@ -1,3 +1,6 @@
+from typing import List
+
+from django.db.models import Q, QuerySet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
@@ -76,3 +79,19 @@ class ProductView(DetailView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(details=self.object.details_object)
+
+
+class SearchCategory:
+    def __init__(self, fields: List[str]):
+        self.fields = fields
+
+    def filter(self, query: str, queryset: QuerySet) -> QuerySet:
+        tokens = query.split()
+        result_query = Q()
+        for token in tokens:
+            for field in self.fields:
+                lookup = dict()
+                lookup[field + '__icontains'] = token
+                result_query = result_query | Q(**lookup)
+
+        return queryset.filter(result_query)
