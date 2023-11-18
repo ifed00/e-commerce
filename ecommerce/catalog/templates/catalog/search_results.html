@@ -1,0 +1,5 @@
+{% block search_results %}
+{% for cat in categories %}
+    <div>{{ cat.name }}: {{ cat.found }}</div>
+{% endfor %}
+{% endblock search_results %}

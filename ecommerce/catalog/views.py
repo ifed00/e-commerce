@@ -5,7 +5,7 @@ from django.views.generic import ListView, DetailView
 
 from .filter_widgets import FilterFactory, Filters
 from .models import Category, Product, BaseDetails
-from .search import SearchCategory
+from .search import SearchCategory, SearchCatalog
 
 
 # Create your views here.
@@ -81,3 +81,19 @@ class ProductView(DetailView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(details=self.object.details_object)
+
+
+class SearchView(ListView):
+    template_name = 'catalog/search_results.html'
+    context_object_name = 'categories'
+
+    def get_queryset(self):
+        if 'q' not in self.request.GET:
+            raise ValueError('Bad request')
+        user_query = self.request.GET['q']
+
+        search_engine = SearchCatalog(['name', 'product__name'])
+        categories = search_engine.filter(user_query, Category.objects.all())
+
+        return categories
+
