@@ -1,12 +1,12 @@
-from typing import List
-
-from django.db.models import Q, QuerySet
+from django.db.models import QuerySet
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
 
 from .filter_widgets import FilterFactory, Filters
-from .models import Category, Product
+from .models import Category, Product, BaseDetails
+from .search import SearchCategory
+
 
 # Create your views here.
 
@@ -21,44 +21,46 @@ class CategoryView(ListView):  # TODO: add filter products feature
     template_name = 'catalog/category_index.html'
     context_object_name = 'products'
 
-    def pre_get_queryset(self):
-        self.category = get_object_or_404(Category, slug=self.kwargs['slug'])
-        return Product.published.filter(category_id=self.category.pk).prefetch_related('details_object')
-
     def get_queryset(self):
-        return self.objects_list
+        category = get_object_or_404(Category, slug=self.kwargs['slug'])
+        queryset = Product.published.filter(category_id=category.pk)\
+            .prefetch_related('category').prefetch_related('details_object')
+
+        # gather first because dynamic filters need access to unfiltered queryset
+        self.gather_filters(queryset, category.details_content_type.model_class())
+
+        queryset = self.apply_filters(queryset)
+
+        if 'q' in self.request.GET:
+            search_engine = SearchCategory(['name'])
+            queryset = search_engine.filter(self.request.GET['q'], queryset)
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['filter_widgets'] = self.filters
         return context
 
-    def gather_filters(self):
+    def gather_filters(self, queryset: QuerySet, related_model_class: type[BaseDetails]):
         self.filters = [
-            FilterFactory.produce('price', Filters.BOUND, queryset=self.objects_list),
-            FilterFactory.produce('manufacturer', Filters.DYNAMIC_CHOICES, queryset=self.objects_list)
+            FilterFactory.produce('price', Filters.BOUND, queryset=queryset),
+            FilterFactory.produce('manufacturer', Filters.DYNAMIC_CHOICES, queryset=queryset)
         ]
 
-        related_model_class = self.category.details_content_type.model_class()
         FilterFactory.add_filters_for_related_model(self.filters,
                                                     related_model_class.generic_relation_name,
                                                     related_model_class,
-                                                    self.objects_list)
+                                                    queryset)
 
         for f in self.filters:
             f.parse(self.request.GET)
 
-    def apply_filters(self):
+    def apply_filters(self, queryset: QuerySet) -> QuerySet:
+        result = queryset
         for f in self.filters:
-            self.objects_list = f.filter(self.objects_list)
-
-    def get(self, request, *args, **kwargs):
-        self.objects_list = self.pre_get_queryset()
-
-        self.gather_filters()  # gather first because dynamic filters need access to unfiltered queryset
-        self.apply_filters()
-
-        return super().get(request, *args, **kwargs)
+            result = f.filter(result)
+        return result
 
 
 class ProductView(DetailView):
@@ -79,19 +81,3 @@ class ProductView(DetailView):
 
     def get_context_data(self, **kwargs):
         return super().get_context_data(details=self.object.details_object)
-
-
-class SearchCategory:
-    def __init__(self, fields: List[str]):
-        self.fields = fields
-
-    def filter(self, query: str, queryset: QuerySet) -> QuerySet:
-        tokens = query.split()
-        result_query = Q()
-        for token in tokens:
-            for field in self.fields:
-                lookup = dict()
-                lookup[field + '__icontains'] = token
-                result_query = result_query | Q(**lookup)
-
-        return queryset.filter(result_query)

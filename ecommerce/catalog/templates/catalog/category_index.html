@@ -3,7 +3,7 @@
     <ul>
     {% for product in products %}
         <li>
-            <div>{{ product.name }} [{{ product.details_object.get_short_details }}]</div>
+            <div><a href="{% url 'product'  cat_slug=product.category.slug id=product.pk %}">{{ product.name }}</a> [{{ product.details_object.get_short_details }}]</div>
         </li>
     {% endfor %}
     </ul>

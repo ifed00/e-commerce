@@ -206,7 +206,7 @@ class FilterFactory:
 
     @classmethod
     def add_filters_for_related_model(cls, filters_list: List[FilterBase], related_name: str,
-                                      related_model: FilterableMixin, queryset: QuerySet):
+                                      related_model: type[FilterableMixin], queryset: QuerySet):
         """ Parses Django model with FilterableMixin, produces filters and adds them to filter_list """
         for field, filter_type in related_model.FILTERS:
             choices = None
