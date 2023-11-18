@@ -1,5 +1,11 @@
 {% block search_results %}
 {% for cat in categories %}
+    {% with cat.pk as cat_id %}
     <div>{{ cat.name }}: {{ cat.found }}</div>
+    <div>!{{ first_products_dict }} | {{ cat_id }} !</div>
+    {% for p in first_products_dict.id %}
+        <div>{{p.name}}!</div>
+    {% endfor %}
+    {% endwith %}
 {% endfor %}
 {% endblock search_results %}
