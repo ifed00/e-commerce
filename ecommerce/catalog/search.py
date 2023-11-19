@@ -35,6 +35,13 @@ class SearchCatalog(SearchBase):
         self.show_first = show_first
 
     def filter(self, query: str, products: QuerySet) -> List[Dict]:
+        """
+        :return: List of Dict with 3 keys:
+            'category': Category - category where products were found
+            'found': int - number of found products in the category
+            'first_found': List[Product] - list of found products, len <= self.show_first
+        """
+        # TODO: somehow specify return type further than just List[Dict], dataclass?
         if not query:
             raise self.NoQuerySpecified()
 
