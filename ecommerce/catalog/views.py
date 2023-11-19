@@ -92,17 +92,13 @@ class SearchView(ListView):
             raise ValueError('Bad request')
         user_query = self.request.GET['q']
 
-        search_engine = SearchCatalog(['name', 'category__name'], Category)
-        categories = search_engine.filter(user_query, Product.published.all().prefetch_related('category'))
+        search_engine = SearchCatalog(['name', 'category__name'])
+        search_results = search_engine.filter(user_query, Product.published.all().prefetch_related('category'))
 
-        self.first_products_dict = search_engine.first_found_products
-
-        return categories
+        return search_results
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(object_list=object_list, **kwargs)
-
-        context['list'] =
-
+        context['query'] = 'q=' + self.request.GET['q']
         return context
 

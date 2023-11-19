@@ -1,11 +1,12 @@
 {% block search_results %}
 {% for cat in categories %}
-    {% with cat.pk as cat_id %}
-    <div>{{ cat.name }}: {{ cat.found }}</div>
-    <div>!{{ first_products_dict }} | {{ cat_id }} !</div>
-    {% for p in first_products_dict.id %}
-        <div>{{p.name}}!</div>
-    {% endfor %}
+    {% with category=cat.category found=cat.found products=cat.first_found %}
+    <div><a href="{% url 'category' slug=category.slug %}?{{query}}">{{ category.name }}</a>: {{ found }}</div>
+    <ul>
+        {% for p in products %}
+            <li><a href="{% url 'product' cat_slug=category.slug id=p.pk %}">{{p.name}}!</a></li>
+        {% endfor %}
+    </ul>
     {% endwith %}
 {% endfor %}
 {% endblock search_results %}

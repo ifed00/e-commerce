@@ -1,15 +1,14 @@
+from collections import namedtuple
 from typing import List, Tuple, Dict
 
 from django.db.models import Q, QuerySet, Count, Model
 
 
-class SearchCategory:
+class SearchBase:
     def __init__(self, fields: List[str]):
         self.fields = fields
 
     def filter(self, query: str, queryset: QuerySet) -> QuerySet:
-        if not query:
-            return queryset
         tokens = query.split()
         result_query = Q()
         for token in tokens:
@@ -21,41 +20,43 @@ class SearchCategory:
         return queryset.filter(result_query)
 
 
-class SearchCatalog:
-    def __init__(self, fields: List[str], category_model: type[Model], show_first: int = 5):
-        self.fields = fields
-        self.category_model = category_model
-        self.first_found_products: Dict[str, List[Model]] = dict()
-        self.show_first = show_first
-
+class SearchCategory(SearchBase):
     def filter(self, query: str, queryset: QuerySet) -> QuerySet:
         if not query:
             return queryset
-        tokens = query.split()
-        result_query = Q()
+        return super().filter(query, queryset)
 
-        for token in tokens:
-            for field in self.fields:
-                lookup = dict()
-                lookup[field + '__icontains'] = token
-                result_query = result_query | Q(**lookup)
 
-        products = queryset.filter(result_query)
+class SearchCatalog(SearchBase):
+    class NoQuerySpecified(Exception):
+        pass
 
-        cats_list = products.values('category').annotate(found=Count('category'))
+    def __init__(self, fields: List[str], show_first: int = 3):
+        super().__init__(fields)
+        self.show_first = show_first
 
-        cat_ids = [cat['category'] for cat in cats_list]
+    def filter(self, query: str, products: QuerySet) -> List[Dict]:
+        if not query:
+            raise self.NoQuerySpecified()
 
-        queryset = self.category_model.objects.filter(pk__in=cat_ids)
+        # following code highly relies on this QuerySet being sorted by category_id
+        products = super().filter(query, products).order_by('category_id')
 
-        self.first_found_products = {cat['category']: list() for cat in cats_list}
+        search_results = list(products.values('category').annotate(found=Count('category')))
 
+        prev_cat_id = -1
+        results_index = -1
+        single_result = None
         for p in products:
-            cat = p.category_id
-            pre_list = self.first_found_products[cat]
-            if len(pre_list) > self.show_first:
-                continue
+            cat_id = p.category_id
+            if prev_cat_id != cat_id:
+                prev_cat_id = cat_id
+                results_index += 1
+                single_result = search_results[results_index]
+                single_result['category'] = p.category
+                single_result['first_found'] = list()
 
-            pre_list.append(p)
+            if len(single_result['first_found']) < self.show_first:
+                single_result['first_found'].append(p)
 
-        return queryset
+        return search_results
