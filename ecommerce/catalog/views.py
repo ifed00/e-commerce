@@ -3,7 +3,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView, DetailView
 
-from .filter_widgets import FilterFactory, Filters
+from .filters import FilterFactory, Filters
 from .models import Category, Product, BaseDetails
 from .search import SearchCategory, SearchCatalog
 
@@ -17,7 +17,7 @@ class IndexView(ListView):
     context_object_name = 'categories'
 
 
-class CategoryView(ListView):  # TODO: add filter products feature
+class CategoryView(ListView):
     template_name = 'catalog/category_index.html'
     context_object_name = 'products'
 

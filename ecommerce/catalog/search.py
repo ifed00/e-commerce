@@ -1,7 +1,6 @@
-from collections import namedtuple
-from typing import List, Tuple, Dict
+from typing import List, Dict
 
-from django.db.models import Q, QuerySet, Count, Model
+from django.db.models import Q, QuerySet, Count
 
 
 class SearchBase:

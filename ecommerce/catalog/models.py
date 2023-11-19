@@ -3,7 +3,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import now
 
-from .filter_widgets import FilterFactory, FilterableMixin, Filters
+from .filters import FilterableMixin, Filters
 from .validators import validate_percent, validate_resolution
 
 
@@ -120,7 +120,7 @@ class FridgeDetails(BaseDetails):
     FILTERS = [
         ('volume_liters', Filters.BOUND),
         ('has_freezer', Filters.BOOL_CHOICES),
-        ('EU_energy_label', Filters.STATIC_CHOICES),  # TODO: add STATIC_CHOICES
+        ('EU_energy_label', Filters.STATIC_CHOICES),
         ('color', Filters.DYNAMIC_CHOICES)
     ]
 

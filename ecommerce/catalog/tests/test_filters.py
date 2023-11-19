@@ -7,7 +7,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import make_aware
 
 from catalog.models import Product, PhoneDetails, FridgeDetails, Category
-from catalog.filter_widgets import FilterBound, FilterDynamicChoices, FilterBool, FilterStaticChoices
+from catalog.filters import FilterBound, FilterDynamicChoices, FilterBool, FilterStaticChoices
 
 
 def common_setup(cls):

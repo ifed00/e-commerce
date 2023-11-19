@@ -8,6 +8,10 @@ from django.db.models import QuerySet
 from django.db.models import Max, Min
 
 
+# TODO: use forms with GET method for filters?
+# these forms should be dynamically created based on category
+
+
 class FilterableMixin:
     FILTERS = []
 
