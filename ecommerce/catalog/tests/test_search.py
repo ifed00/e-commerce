@@ -16,7 +16,7 @@ class TestSearchBase(TestCase):
         qs = cat_fridges.product_set.all()
 
         search_engine = SearchBase(['name'])
-        qs = search_engine.filter('Freeze choice', qs)
+        qs = search_engine._filter('Freeze choice', qs)
 
         result = list(qs)
         self.assertEqual(len(result), 2)
@@ -29,7 +29,7 @@ class TestSearchBase(TestCase):
         qs = cat_fridges.product_set.all()
 
         search_engine = SearchBase(['name', 'description'])
-        qs = search_engine.filter('ee', qs)
+        qs = search_engine._filter('ee', qs)
 
         result = list(qs)
         self.assertEqual(len(result), 2)
@@ -77,12 +77,12 @@ class TestSearchCatalog(TestCase):
         fridges_cat = Category.objects.get(pk=2)
 
         for r in result:
-            if r['category'] == phones_cat:
-                self.assertEqual(r['found'], 2)
-                self.assertEqual(len(r['first_found']), 1)
-            elif r['category'] == fridges_cat:
-                self.assertEqual(r['found'], 1)
-                self.assertEqual(len(r['first_found']), 1)
+            if r.category == phones_cat:
+                self.assertEqual(r.found, 2)
+                self.assertEqual(len(r.first_found_products), 1)
+            elif r.category == fridges_cat:
+                self.assertEqual(r.found, 1)
+                self.assertEqual(len(r.first_found_products), 1)
             else:
                 self.assertTrue(False)
 

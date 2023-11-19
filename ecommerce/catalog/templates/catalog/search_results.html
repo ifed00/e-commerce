@@ -1,6 +1,6 @@
 {% block search_results %}
 {% for cat in categories %}
-    {% with category=cat.category found=cat.found products=cat.first_found %}
+    {% with category=cat.category found=cat.found products=cat.first_found_products %}
     <div><a href="{% url 'category' slug=category.slug %}?{{query}}">{{ category.name }}</a>: {{ found }}</div>
     <ul>
         {% for p in products %}

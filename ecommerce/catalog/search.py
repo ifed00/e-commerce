@@ -1,13 +1,16 @@
+from dataclasses import dataclass
 from typing import List, Dict
 
 from django.db.models import Q, QuerySet, Count
+
+from catalog.models import Product, Category
 
 
 class SearchBase:
     def __init__(self, fields: List[str]):
         self.fields = fields
 
-    def filter(self, query: str, queryset: QuerySet) -> QuerySet:
+    def _filter(self, query: str, queryset: QuerySet) -> QuerySet:
         tokens = query.split()
         result_query = Q()
         for token in tokens:
@@ -23,7 +26,7 @@ class SearchCategory(SearchBase):
     def filter(self, query: str, queryset: QuerySet) -> QuerySet:
         if not query:
             return queryset
-        return super().filter(query, queryset)
+        return super()._filter(query, queryset)
 
 
 class SearchCatalog(SearchBase):
@@ -34,19 +37,18 @@ class SearchCatalog(SearchBase):
         super().__init__(fields)
         self.show_first = show_first
 
-    def filter(self, query: str, products: QuerySet) -> List[Dict]:
-        """
-        :return: List of Dict with 3 keys:
-            'category': Category - category where products were found
-            'found': int - number of found products in the category
-            'first_found': List[Product] - list of found products, len <= self.show_first
-        """
-        # TODO: somehow specify return type further than just List[Dict], dataclass?
+    @dataclass
+    class SearchResultInfo:
+        category: Category
+        found: int
+        first_found_products: List[Product]  # len <= show_first
+
+    def filter(self, query: str, products: QuerySet) -> List[SearchResultInfo]:
         if not query:
             raise self.NoQuerySpecified()
 
         # following code highly relies on this QuerySet being sorted by category_id
-        products = super().filter(query, products).order_by('category_id')
+        products = super()._filter(query, products).order_by('category_id')
 
         search_results = list(products.values('category').annotate(found=Count('category')))
 
@@ -60,9 +62,9 @@ class SearchCatalog(SearchBase):
                 results_index += 1
                 single_result = search_results[results_index]
                 single_result['category'] = p.category
-                single_result['first_found'] = list()
+                single_result['first_found_products'] = list()
 
-            if len(single_result['first_found']) < self.show_first:
-                single_result['first_found'].append(p)
+            if len(single_result['first_found_products']) < self.show_first:
+                single_result['first_found_products'].append(p)
 
-        return search_results
+        return [self.SearchResultInfo(**r) for r in search_results]
