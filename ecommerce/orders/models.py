@@ -2,6 +2,7 @@ import uuid
 
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.urls import reverse_lazy
 
 import catalog
 from catalog.validators import validate_percent
@@ -23,6 +24,9 @@ class Order(models.Model):
     products = models.ManyToManyField(catalog.models.Product,
                                       through='OrderProducts',
                                       through_fields=('order', 'product'))
+
+    def get_absolute_url(self):
+        return reverse_lazy('order', kwargs={'order_id': self.pk})
 
 
 class OrderProducts(models.Model):

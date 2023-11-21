@@ -18,10 +18,13 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 
+import orders.views
 from .settings import MEDIA_ROOT, MEDIA_URL
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('catalog.urls')),
-    path('order/', include('orders.urls'))
+    path('order/', include('orders.urls')),
+    path('accounts/', include('django.contrib.auth.urls')),
+    path('profile', orders.views.ProfileView.as_view(), name='profile')
 ] + static(MEDIA_URL, document_root=MEDIA_ROOT)
