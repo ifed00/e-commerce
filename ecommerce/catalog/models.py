@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.urls import reverse_lazy
 from django.utils.timezone import now
 
 from .filters import FilterableMixin, Filters
@@ -19,6 +20,9 @@ class Category(models.Model):
     picture = models.ImageField(upload_to='categories')
 
     details_content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+
+    def get_absolute_url(self):
+        return reverse_lazy('category', kwargs={'slug': self.slug})
 
     def __str__(self):
         return self.name
@@ -51,6 +55,9 @@ class Product(models.Model):
 
     objects = models.Manager()
     published = ProductManager()
+
+    def get_absolute_url(self):
+        return reverse_lazy('product', kwargs={'cat_slug': self.category.slug, 'id': self.pk})
 
     class Meta:
         indexes = [
