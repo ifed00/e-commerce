@@ -14,17 +14,17 @@ from .validators import non_zero_validator
 
 class BasketManager(models.Manager):
     def get_queryset(self):
-        return self.get_queryset().filter(done=False, ordered=False)
+        return super().get_queryset().filter(done=False, ordered=False)
 
 
 class ActiveOrdersManager(models.Manager):
     def get_queryset(self):
-        return self.get_queryset().filter(done=False, ordered=True)
+        return super().get_queryset().filter(done=False, ordered=True)
 
 
 class DoneManager(models.Manager):
     def get_queryset(self):
-        return self.get_queryset().filter(done=True, ordered=True)
+        return super().get_queryset().filter(done=True, ordered=True)
 
 
 class Order(models.Model):
@@ -62,13 +62,13 @@ class Order(models.Model):
         if self.ship_to is None:
             raise self.BlankShipmentError
         self.ordered = True
-        self.ordered_at = timezone.datetime.now()
+        self.ordered_at = timezone.now()
 
     def mark_done(self):
         if not self.ordered or self.done:
             raise self.WrongStateChange
         self.done = True
-        self.done_at = timezone.datetime.now()
+        self.done_at = timezone.now()
 
     def get_absolute_url(self):
         return reverse_lazy('order', kwargs={'order_id': self.pk})
