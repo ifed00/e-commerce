@@ -1,3 +1,7 @@
+{% extends 'base_template.html' %}
+
+{% block content %}
+
 {% block order %}
     <div>Ordered by: {{ order.user.username }}</div>
     <div>Ordered at: {{ order.created_at }}</div>
@@ -9,3 +13,5 @@
         {% endfor %}
     </ul>
 {% endblock order %}
+
+{% endblock content %}

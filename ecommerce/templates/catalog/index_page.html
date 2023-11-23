@@ -1,10 +1,13 @@
-{% block mainlist %}
-    <div>Categories:</div>
-    <ul>
-    {% for cat in categories %}
-        <li>
-            <a href="{% url 'category' cat.slug %}">{{ cat.name }}</a>
-        </li>
-    {% endfor %}
-    </ul>
-{% endblock mainlist %}
+{% extends 'base_template.html' %}
+{% block content %}
+    {% block mainlist %}
+        <div>Categories:</div>
+        <ul>
+        {% for cat in categories %}
+            <li>
+                <a href="{% url 'category' cat.slug %}">{{ cat.name }}</a>
+            </li>
+        {% endfor %}
+        </ul>
+    {% endblock mainlist %}
+{% endblock content %}

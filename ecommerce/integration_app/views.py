@@ -29,12 +29,12 @@ class CategoryView(ListView):
     context_object_name = 'products'
 
     def get_queryset(self):
-        category = get_object_or_404(Category, slug=self.kwargs['slug'])
-        queryset = Product.published.filter(category_id=category.pk)\
+        self.category = get_object_or_404(Category, slug=self.kwargs['slug'])
+        queryset = Product.published.filter(category_id=self.category.pk)\
             .prefetch_related('category').prefetch_related('details_object')
 
         # gather first because dynamic filters need access to unfiltered queryset
-        self.gather_filters(queryset, category.details_content_type.model_class())
+        self.gather_filters(queryset, self.category.details_content_type.model_class())
 
         queryset = self.apply_filters(queryset)
 
@@ -47,6 +47,7 @@ class CategoryView(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['filter_widgets'] = self.filters
+        context['current_category'] = self.category
         return context
 
     def gather_filters(self, queryset: QuerySet, related_model_class: type[BaseDetails]):

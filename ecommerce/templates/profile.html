@@ -1,3 +1,7 @@
+{% extends 'base_template.html' %}
+
+{% block content %}
+
 {% block orders %}
 <div>Your orders, {{ user.username }}:</div>
     <ul>
@@ -6,3 +10,5 @@
     {% endfor %}
     </ul>
 {% endblock orders %}
+
+{% endblock content %}

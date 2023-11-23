@@ -1,3 +1,7 @@
+{% extends 'base_template.html' %}
+
+{% block content %}
+
 {% block leftmenu %}
     <div>Products:</div>
     <ul>
@@ -18,4 +22,7 @@
         </li>
     {% endfor %}
     </ul>
+    <a href="{% url 'category' slug=current_category.slug %}">Reset to no filters</a>
 {% endblock filtermenu %}
+
+{% endblock content %}
