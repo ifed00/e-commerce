@@ -1,6 +1,12 @@
-from django.db.models import QuerySet
-from django.http import Http404
+import json
+from json import JSONDecodeError
+
+from django.db.models import QuerySet, F
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.utils.decorators import method_decorator
+from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -141,3 +147,54 @@ class ProfileView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
+
+
+class AddProductToOrderView(View):
+    def post(self, request, *args, **kwargs):
+        response_data = {'success': False}
+        if not request.user.is_authenticated:
+            response_data['error'] = 'anonymous users can not add products to basket'
+            return JsonResponse(response_data, status=403)
+
+        try:
+            payload = json.loads(request.body)
+            product_id = payload['product_id']
+        except (KeyError, JSONDecodeError):
+            response_data['error'] = 'request malformed: use JSON format and provide product_id key'
+            return JsonResponse(response_data, status=400)
+
+        try:
+            product = Product.published.get(pk=product_id)
+        except Product.DoesNotExist:
+            response_data['error'] = f'product {product_id} not found'
+            return JsonResponse(response_data, status=404)
+
+        try:
+            basket = Order.baskets.get(user=request.user)
+        except Order.DoesNotExist:
+            basket = Order.objects.create(user=request.user)
+
+        amount = payload.get('amount', 1)
+
+        if product.units_available < amount:
+            response_data['error'] = 'requested amount is not available'
+            return JsonResponse(response_data, status=422)
+
+        try:
+            detail = OrderProducts.objects.filter(order=basket, product=product).get()
+            detail.amount = F('amount') + amount
+            detail.save()
+        except OrderProducts.DoesNotExist:
+            OrderProducts.objects.create(
+                order=basket,
+                product=product,
+                buying_price=product.price,
+                buying_discount_percent=product.discount_percent,
+                amount=amount
+            )
+
+        product.units_available = F('units_available') - amount
+        product.save()
+
+        response_data['success'] = True
+        return JsonResponse(response_data, status=200)
