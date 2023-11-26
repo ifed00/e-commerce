@@ -23,3 +23,9 @@ def validate_resolution(input_data: str) -> None:
     if h == 0 or w == 0 or \
             str(h) != split_data[0] or str(w) != split_data[1]:
         raise ValidationError(f"{input_data} contains ill-formed integers", code='bad_int_format')
+
+
+def positive_decimal_validator(input_data: Decimal) -> None:
+    if input_data <= 0:
+        raise ValidationError(f'{input_data = }, but should be positive',
+                              code='out_of_range')

@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'catalog.apps.CatalogConfig',
     'orders.apps.OrdersConfig',
+    'product_details.apps.ProductDetailsConfig',
     'integration_app.apps.IntegrationAppConfig',
     'django_extensions'
 ]
