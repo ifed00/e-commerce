@@ -1,12 +1,7 @@
-import json
-from json import JSONDecodeError
-
+from django import forms
 from django.db.models import QuerySet, F
-from django.http import Http404, JsonResponse
+from django.http import Http404
 from django.shortcuts import get_object_or_404
-from django.utils.decorators import method_decorator
-from django.views import View
-from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -15,6 +10,7 @@ from django.core.exceptions import PermissionDenied
 from catalog.filters import FilterFactory, Filters
 from catalog.models import Category, Product, BaseDetails
 from catalog.search import SearchCategory, SearchCatalog
+from integration_app.ajax_views_classes import JsonAJAXView
 
 from orders.models import Order, OrderProducts
 
@@ -149,52 +145,69 @@ class ProfileView(LoginRequiredMixin, ListView):
         return Order.objects.filter(user=self.request.user)
 
 
-class AddProductToOrderView(View):
-    def post(self, request, *args, **kwargs):
-        response_data = {'success': False}
-        if not request.user.is_authenticated:
-            response_data['error'] = 'anonymous users can not add products to basket'
-            return JsonResponse(response_data, status=403)
+class ProductAmountForm(forms.Form):
+    product_id = forms.ModelChoiceField(queryset=Product.published.all())
+    amount = forms.IntegerField(required=False, min_value=1)
 
-        try:
-            payload = json.loads(request.body)
-            product_id = payload['product_id']
-        except (KeyError, JSONDecodeError):
-            response_data['error'] = 'request malformed: use JSON format and provide product_id key'
-            return JsonResponse(response_data, status=400)
 
-        try:
-            product = Product.published.get(pk=product_id)
-        except Product.DoesNotExist:
-            response_data['error'] = f'product {product_id} not found'
-            return JsonResponse(response_data, status=404)
+def get_payload_default():
+    return {'amount': 1}
 
-        try:
-            basket = Order.baskets.get(user=request.user)
-        except Order.DoesNotExist:
-            basket = Order.objects.create(user=request.user)
 
-        amount = payload.get('amount', 1)
+class AddProductToOrderView(JsonAJAXView):
+    authentication_error_msg = 'anonymous users can not add products to basket'
+    get_default = get_payload_default
+    ValidationForm = ProductAmountForm
+
+    def handle_request(self) -> None:
+        product = self.cleaned_data['product_id']
+        amount = self.cleaned_data['amount']
+
+        basket, _ = Order.baskets.get_or_create(user=self.request.user)
 
         if product.units_available < amount:
-            response_data['error'] = 'requested amount is not available'
-            return JsonResponse(response_data, status=422)
+            self.response_data['error'] = 'requested amount is not available'
+            self.status = 422
+            return
 
-        try:
-            detail = OrderProducts.objects.filter(order=basket, product=product).get()
+        detail, is_new = OrderProducts.objects.get_or_create(
+            order=basket,
+            product=product,
+            defaults={
+                'buying_price': product.price,
+                'buying_discount_percent': product.discount_percent,
+                'amount': amount
+            })
+        if not is_new:
             detail.amount = F('amount') + amount
             detail.save()
-        except OrderProducts.DoesNotExist:
-            OrderProducts.objects.create(
-                order=basket,
-                product=product,
-                buying_price=product.price,
-                buying_discount_percent=product.discount_percent,
-                amount=amount
-            )
 
         product.units_available = F('units_available') - amount
         product.save()
 
-        response_data['success'] = True
-        return JsonResponse(response_data, status=200)
+        self.response_data['success'] = True
+
+
+class DeleteProductFromOrderView(JsonAJAXView):
+    authentication_error_msg = 'anonymous users can not delete products from basket'
+    get_default = get_payload_default
+    ValidationForm = ProductAmountForm
+
+    def handle_request(self):
+        product = self.cleaned_data['product_id']
+        amount = self.cleaned_data['amount']
+
+        basket = Order.baskets.get(user=self.request.user)
+
+        detail = OrderProducts.objects.get(order=basket, product=product)
+        released_amount = min(detail.amount, amount)
+        if detail.amount <= amount:
+            detail.delete()
+        else:
+            detail.amount = F('amount') - amount
+            detail.save()
+
+        product.units_available = F('units_available') + released_amount
+        product.save()
+
+        self.response_data['success'] = True
