@@ -1,7 +1,10 @@
+from decimal import Decimal
+
 from django.db import models
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.timezone import now
 
 from .filters import FilterableMixin, Filters
@@ -36,12 +39,13 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     manufacturer = models.CharField(max_length=255)
     description = models.TextField()
-    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, validators=[validate_percent])
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2,
+                                           default=Decimal(0), validators=[validate_percent])
     picture = models.ImageField(upload_to='products')
     units_available = models.IntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    published_at = models.DateTimeField()
+    published_at = models.DateTimeField(default=timezone.now())
     updated_at = models.DateTimeField(auto_now=True)
 
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
