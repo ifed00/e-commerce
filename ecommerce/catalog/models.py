@@ -45,7 +45,7 @@ class Product(models.Model):
     units_available = models.IntegerField()
 
     created_at = models.DateTimeField(auto_now_add=True)
-    published_at = models.DateTimeField(default=timezone.now())
+    published_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
