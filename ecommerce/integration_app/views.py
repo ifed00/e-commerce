@@ -1,7 +1,11 @@
+import random
+
 from django import forms
+from django.core.paginator import Paginator, EmptyPage
 from django.db.models import QuerySet, F
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.views import View
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -145,6 +149,8 @@ class ProfileView(LoginRequiredMixin, ListView):
         return Order.objects.filter(user=self.request.user)
 
 
+# AJAX-related views:
+
 class ProductAmountForm(forms.Form):
     product_id = forms.ModelChoiceField(queryset=Product.published.all())
     amount = forms.IntegerField(required=False, min_value=1)
@@ -211,3 +217,32 @@ class DeleteProductFromOrderView(JsonAJAXView):
         product.save()
 
         self.response_data['success'] = True
+
+
+class GetRandomProducts(View):
+    def get(self, request, *args, **kwargs):
+        try:
+            page_num = int(request.GET.get('page', 1))
+        except ValueError:
+            return JsonResponse({}, status=400)
+
+        if 'reset' in request.GET and 'seed' in request.session:
+            del request.session['seed']
+
+        seed = request.session.setdefault('seed', random.randint(-32568, 32568))
+
+        ids = list(Product.published.values_list('pk', flat=True))
+        random.seed(seed)
+        random.shuffle(ids)
+
+        paginated_ids = Paginator(ids, 10)
+
+        try:
+            current_page = paginated_ids.page(page_num)
+        except EmptyPage:
+            return JsonResponse({}, status=400)
+
+        fields = ['pk', 'name', 'picture', 'category__name', 'category__slug']
+        products = list(Product.published.filter(pk__in=current_page.object_list).values(*fields))
+
+        return JsonResponse({'has_next_page': current_page.has_next(), 'products': products}, status=200)
