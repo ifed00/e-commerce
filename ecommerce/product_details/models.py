@@ -70,10 +70,11 @@ class DecorationDetails(BaseDetails):
     width_cm = DimensionField()
     height_cm = DimensionField()
     material = models.CharField(max_length=256)
+    quantity = models.PositiveIntegerField(default=1, validators=[non_zero_validator])
     color = ColorField()
 
     def get_short_details(self) -> str:
-        return f'{self.type}/{self.length_cm}x{self.width_cm}x{self.height_cm} cm/' \
+        return f'{self.type}/{self.quantity} in set/{self.length_cm}x{self.width_cm}x{self.height_cm} cm/' \
                f'{self.color}/{self.material}'
 
 
