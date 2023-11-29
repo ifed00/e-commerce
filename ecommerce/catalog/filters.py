@@ -96,7 +96,8 @@ class FilterBound(FilterBase):
         return queryset.filter(**lookups)
 
     def get_html(self):
-        return f'{self.name}: {self.lower_bound}-{self.upper_bound} | min {self.min}, max {self.max}'
+        # TODO: get context from DecimalField somehow
+        return f'{self.name}: {self.lower_bound:.2f}-{self.upper_bound:.2f} | min {self.min:.2f}, max {self.max:.2f}'
 
 
 class FilterChoicesBase(FilterBase):
