@@ -123,11 +123,14 @@ class FilterChoicesBase(FilterBase):
                 self.choices[choice] = True
                 self.show_all_choices = False
 
+    def get_stored(self, choice: str) -> str:
+        return choice
+
     def filter(self, queryset: QuerySet) -> QuerySet:
         if self.show_all_choices:
             return queryset
 
-        user_choices = [choice for choice, show in self.choices.items() if show]
+        user_choices = [self.get_stored(choice) for choice, show in self.choices.items() if show]
         lookup = dict()
         lookup[self.query_name + '__in'] = user_choices
         return queryset.filter(**lookup)
@@ -188,7 +191,11 @@ class FilterStaticChoices(FilterChoicesBase):
         :param: choices - django-style choices of the field
         """
         super().__init__(field, **kwargs)
-        self.choices = {key: False for key, _ in choices}
+        self.choices = {key: False for _, key in choices}
+        self.model_choices = {human_readable: stored for stored, human_readable in choices}
+
+    def get_stored(self, choice: str) -> str:
+        return self.model_choices[choice]
 
 
 class FilterFactory:
