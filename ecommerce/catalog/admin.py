@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 
-from .models import Product, Category, PhoneDetails, FridgeDetails
+from .models import Product, Category
 
 
 @admin.register(Product)
@@ -35,7 +35,3 @@ class CategoryAdmin(admin.ModelAdmin):
 
 class DetailsAdmin(admin.ModelAdmin):
     search_fields = ['pk']
-
-
-admin.site.register(PhoneDetails, DetailsAdmin)
-admin.site.register(FridgeDetails, DetailsAdmin)
