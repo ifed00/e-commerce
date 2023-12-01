@@ -169,12 +169,12 @@ class AddProductToOrderView(AJAXAuthRequiredMixin, AJAXPostView):
         product = self.cleaned_data['product_id']
         amount = self.cleaned_data['amount']
 
-        basket, _ = Order.baskets.get_or_create(user=self.request.user)
-
         if product.units_available < amount:
             self.response_data['error'] = 'requested amount is not available'
             self.status = 422
             return
+
+        basket, _ = Order.baskets.get_or_create(user=self.request.user)
 
         detail, is_new = OrderProducts.objects.get_or_create(
             order=basket,
