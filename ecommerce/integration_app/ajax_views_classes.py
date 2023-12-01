@@ -7,8 +7,7 @@ from django.http import JsonResponse
 from django.views import View
 
 
-class JsonAJAXView(View):
-    authentication_error_msg = 'Forbidden'
+class AJAXPostView(View):
     get_default: Callable[[], Dict]
     ValidationForm: type[forms.Form]
 
@@ -21,10 +20,7 @@ class JsonAJAXView(View):
         self.status = 200
 
     def post(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            self.response_data['error'] = self.authentication_error_msg
-            self.status = 403
-        elif self.parse_request():
+        if self.parse_request():
             self.handle_request()
 
         return JsonResponse(self.response_data, status=self.status)
@@ -50,3 +46,16 @@ class JsonAJAXView(View):
         self.cleaned_data = data.cleaned_data
 
         return True
+
+
+class AJAXAuthRequiredMixin:
+    authentication_error_msg = 'Forbidden'
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            self.response_data['error'] = self.authentication_error_msg
+            self.status = 403
+
+            return JsonResponse(self.response_data, status=self.status)
+
+        return super().post(request, *args, **kwargs)

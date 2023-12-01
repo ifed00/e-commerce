@@ -14,7 +14,7 @@ from django.core.exceptions import PermissionDenied
 from catalog.filters import FilterFactory, Filters
 from catalog.models import Category, Product, BaseDetails
 from catalog.search import SearchCategory, SearchCatalog
-from integration_app.ajax_views_classes import JsonAJAXView
+from integration_app.ajax_views_classes import AJAXPostView, AJAXAuthRequiredMixin
 
 from orders.models import Order, OrderProducts
 
@@ -160,7 +160,7 @@ def get_payload_default():
     return {'amount': 1}
 
 
-class AddProductToOrderView(JsonAJAXView):
+class AddProductToOrderView(AJAXAuthRequiredMixin, AJAXPostView):
     authentication_error_msg = 'anonymous users can not add products to basket'
     get_default = get_payload_default
     ValidationForm = ProductAmountForm
@@ -194,7 +194,7 @@ class AddProductToOrderView(JsonAJAXView):
         self.response_data['success'] = True
 
 
-class DeleteProductFromOrderView(JsonAJAXView):
+class DeleteProductFromOrderView(AJAXAuthRequiredMixin, AJAXPostView):
     authentication_error_msg = 'anonymous users can not delete products from basket'
     get_default = get_payload_default
     ValidationForm = ProductAmountForm
