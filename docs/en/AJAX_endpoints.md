@@ -96,7 +96,7 @@ See in endpoint above, except `status=422`.
 ## products/random
 *method: GET*
 
-This endpoint returns 10 random products.
+This endpoint returns up to 10 random products.
 
 Accepts following GET-keys:
 ```
@@ -111,7 +111,7 @@ Response is JSON object with at most 2 keys:
 ```
 {
     has_next_page: *bool*
-    products: *array of 10 products, see below*
+    products: *array of at most 10 products, see below*
 }
 ```
 `product` is JSON object with following keys:
@@ -125,12 +125,14 @@ Response is JSON object with at most 2 keys:
 }
 ```
 
+*Note*: if the page is last (`has_next_page=False`) length of `products` may be less than 10.
+
 This endpoint is deterministic *for given session*: 
 it will return same products for same `page` number 
 until it gets `reset` key.
 
 E.g. two sequential `products/random?page=2` will yield same result.
-But `products/random?page=2&reset` will yield different result.
+But `products/random?page=2&reset` will usually yield different result.
 
 ### Possible responses
 1. `status=200`. Ok.

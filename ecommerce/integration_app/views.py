@@ -230,7 +230,7 @@ class DeleteProductFromOrderView(AJAXAuthRequiredMixin, AJAXPostView):
         self.response_data['success'] = True
 
 
-class GetRandomProducts(View):
+class GetRandomProductsView(View):
     def get(self, request, *args, **kwargs):
         try:
             page_num = int(request.GET.get('page', 1))

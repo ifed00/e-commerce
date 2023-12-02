@@ -245,6 +245,7 @@ class TestAddProductToOrderView(TestCase):
 
 
 class TestDeleteProductFromOrderView(TestCase):
+    # TODO: products set in setUpTestData actually persistent and may interfere!!!
     @classmethod
     def setUpTestData(cls):
         common_setup(cls)
@@ -379,3 +380,77 @@ class TestDeleteProductFromOrderView(TestCase):
         amount_after_request = Product.published.get(pk=product_id).units_available
 
         self.assertEqual(amount_after_request, amount_before_request + 1)
+
+
+class TestGetRandomProductsView(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        common_setup(cls)
+
+        # duplicate products to get above 10
+        almost_new_products = Product.published.values()
+
+        for p in almost_new_products:
+            del p['id']
+
+            Product(**p).save()
+
+    def test_requesting_non_integer_page_number_produces_400_status_code(self):
+
+        response = self.client.get(reverse('get_random_products'), {'page': 'non-integer'})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_requesting_wrong_page_number_produces_400_status_code(self):
+        response = self.client.get(reverse('get_random_products'), {'page': -50})
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_requesting_same_page_produces_same_result(self):
+        response1 = self.client.get(reverse('get_random_products'), {'page': 1})
+        response2 = self.client.get(reverse('get_random_products'), {'page': 1})
+
+        self.assertJSONEqual(str(response1.content, encoding='utf8'),
+                             str(response2.content, encoding='utf8'))
+
+    def test_omitting_page_key_defaults_to_1(self):
+        response_page1 = self.client.get(reverse('get_random_products'), {'page': 1})
+        response_no_page = self.client.get(reverse('get_random_products'))
+
+        self.assertJSONEqual(str(response_no_page.content, encoding='utf8'),
+                             str(response_page1.content, encoding='utf8'))
+
+    def test_full_page_contains_10_entries(self):
+        response = self.client.get(reverse('get_random_products'), {'page': 1})
+
+        response_data = json.loads(response.content)
+        self.assertEqual(len(response_data['products']), 10)
+
+    def test_last_page_contains_orphans(self):
+        response = self.client.get(reverse('get_random_products'), {'page': 2})
+
+        response_data = json.loads(response.content)
+        self.assertEqual(len(response_data['products']), 2)
+
+    def test_non_last_page_has_next_page_equal_True(self):
+        response = self.client.get(reverse('get_random_products'), {'page': 1})
+
+        response_data = json.loads(response.content)
+        self.assertTrue(response_data['has_next_page'])
+
+    def test_last_page_has_next_page_equal_False(self):
+        response = self.client.get(reverse('get_random_products'), {'page': 2})
+
+        response_data = json.loads(response.content)
+        self.assertFalse(response_data['has_next_page'])
+
+    def test_setting_reset_key_usually_shuffles_products(self):
+        # Note: changing seed doesnt imply changing order of products!
+        # this test relies on session['seed'] always being an integer during normal execution
+        session = self.client.session
+        session['seed'] = 'seed'
+        session.save()
+
+        response = self.client.get(reverse('get_random_products'), {'reset': ''})
+
+        self.assertNotEqual(response.client.session['seed'], 'seed')
