@@ -5,7 +5,9 @@ from django.test import TestCase
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
-from catalog.models import Product, PhoneDetails, Category
+from catalog.models import Product, Category
+
+from catalog_test_app.models import PhoneDetails
 
 
 class PublishedManager(TestCase):

@@ -3,13 +3,17 @@
 {% block content %}
 
 {% block order %}
+    <form action="{% url 'order_add' %}" method="POST">
+        {% csrf_token %}
+        <input type="submit" value="TEST">
+    </form>
     <div>Ordered by: {{ order.user.username }}</div>
     <div>Ordered at: {{ order.created_at }}</div>
     <div>Will be shipped to {{ order.ship_to }}</div>
 
     <ul>
         {% for details in product_details %}
-            <li>{{ details.product.name }} on price {{ details.buying_price }} (now costs {{ details.product.price }})</li>
+            <li>{{ details.product.name }} x {{ details.amount }} on price {{ details.buying_price }} (now costs {{ details.product.price }})</li>
         {% endfor %}
     </ul>
 {% endblock order %}

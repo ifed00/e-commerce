@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'orders.apps.OrdersConfig',
     'product_details.apps.ProductDetailsConfig',
     'integration_app.apps.IntegrationAppConfig',
+    'catalog_test_app.apps.CatalogTestAppConfig',
     'django_extensions'
 ]
 

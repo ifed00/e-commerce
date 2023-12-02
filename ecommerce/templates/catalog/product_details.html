@@ -1,8 +1,10 @@
 {% extends 'base_template.html' %}
+{% load static %}
 
 {% block content %}
 
 {% block card %}
+    <img src="/media/{{product.picture}}"></img>
     <div>Product: {{ product.name }} [{{ details.get_short_details }}]</div>
 {% endblock card %}
 

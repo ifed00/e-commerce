@@ -1,6 +1,7 @@
 from django.urls import path
 
-from .views import IndexView, CategoryView, ProductView, SearchView, OrderView
+from .views import IndexView, CategoryView, ProductView, SearchView, OrderView, AddProductToOrderView, \
+    DeleteProductFromOrderView, GetRandomProductsView
 
 urlpatterns = [
     path('', IndexView.as_view(), name='index'),
@@ -8,5 +9,8 @@ urlpatterns = [
     path('product/<slug:cat_slug>/<int:id>', ProductView.as_view(), name='product'),
     path('search', SearchView.as_view(), name='search'),
 
-    path('order/<uuid:order_id>', OrderView.as_view(), name='order')
+    path('order/<uuid:order_id>', OrderView.as_view(), name='order'),
+    path('order/add', AddProductToOrderView.as_view(), name='order_add'),
+    path('order/delete', DeleteProductFromOrderView.as_view(), name='order_delete'),
+    path('products/random', GetRandomProductsView.as_view(), name='get_random_products')
 ]

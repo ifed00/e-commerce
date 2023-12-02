@@ -3,7 +3,9 @@ import datetime
 from django.contrib.contenttypes.models import ContentType
 from django.utils.timezone import make_aware
 
-from catalog.models import Product, PhoneDetails, FridgeDetails, Category
+from catalog.models import Product, Category
+
+from catalog_test_app.models import PhoneDetails, FridgeDetails
 
 
 def common_setup(cls):

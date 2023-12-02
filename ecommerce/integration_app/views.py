@@ -1,6 +1,11 @@
-from django.db.models import QuerySet
-from django.http import Http404
+import random
+
+from django import forms
+from django.core.paginator import Paginator, EmptyPage
+from django.db.models import QuerySet, F
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404
+from django.views import View
 from django.views.generic import ListView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
@@ -9,6 +14,7 @@ from django.core.exceptions import PermissionDenied
 from catalog.filters import FilterFactory, Filters
 from catalog.models import Category, Product, BaseDetails
 from catalog.search import SearchCategory, SearchCatalog
+from integration_app.ajax_views_classes import AJAXPostView, AJAXAuthRequiredMixin
 
 from orders.models import Order, OrderProducts
 
@@ -141,3 +147,113 @@ class ProfileView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
+
+
+# AJAX-related views:
+
+class ProductAmountForm(forms.Form):
+    product_id = forms.ModelChoiceField(queryset=Product.published.all())
+    amount = forms.IntegerField(required=False, min_value=1)
+
+
+def get_payload_default():
+    return {'amount': 1}
+
+
+class AddProductToOrderView(AJAXAuthRequiredMixin, AJAXPostView):
+    authentication_error_msg = 'anonymous users can not add products to basket'
+    get_default = get_payload_default
+    ValidationForm = ProductAmountForm
+
+    def handle_request(self) -> None:
+        product = self.cleaned_data['product_id']
+        amount = self.cleaned_data['amount']
+
+        if product.units_available < amount:
+            self.response_data['error'] = 'requested amount is not available'
+            self.status = 422
+            return
+
+        basket, _ = Order.baskets.get_or_create(user=self.request.user)
+
+        detail, is_new = OrderProducts.objects.get_or_create(
+            order=basket,
+            product=product,
+            defaults={
+                'buying_price': product.price,
+                'buying_discount_percent': product.discount_percent,
+                'amount': amount
+            })
+        if not is_new:
+            detail.amount = F('amount') + amount
+            detail.save()
+
+        product.units_available = F('units_available') - amount
+        product.save()
+
+        self.response_data['success'] = True
+
+
+class DeleteProductFromOrderView(AJAXAuthRequiredMixin, AJAXPostView):
+    authentication_error_msg = 'anonymous users can not delete products from basket'
+    get_default = get_payload_default
+    ValidationForm = ProductAmountForm
+
+    def handle_request(self):
+        product = self.cleaned_data['product_id']
+        amount = self.cleaned_data['amount']
+
+        try:
+            basket = Order.baskets.get(user=self.request.user)
+        except Order.DoesNotExist:
+            self.status = 404
+            self.response_data['error'] = 'no basket for the user exists'
+            return
+
+        try:
+            detail = OrderProducts.objects.get(order=basket, product=product)
+        except OrderProducts.DoesNotExist:
+            self.status = 404
+            self.response_data['error'] = 'no such product in the basket'
+            return
+
+        released_amount = min(detail.amount, amount)
+        if detail.amount <= amount:
+            detail.delete()
+        else:
+            detail.amount = F('amount') - amount
+            detail.save()
+
+        product.units_available = F('units_available') + released_amount
+        product.save()
+
+        self.response_data['success'] = True
+
+
+class GetRandomProductsView(View):
+    def get(self, request, *args, **kwargs):
+        try:
+            page_num = int(request.GET.get('page', 1))
+        except ValueError:
+            return JsonResponse({}, status=400)
+
+        if 'reset' in request.GET and 'seed' in request.session:
+            del request.session['seed']
+
+        seed = request.session.setdefault('seed', random.randint(-32568, 32568))
+
+        ids = list(Product.published.values_list('pk', flat=True))
+        random.seed(seed)
+        random.shuffle(ids)
+
+        paginated_ids = Paginator(ids, 10)
+
+        try:
+            current_page = paginated_ids.page(page_num)
+        except EmptyPage:
+            return JsonResponse({}, status=400)
+
+        fields = ['pk', 'name', 'picture', 'category__name', 'category__slug']
+        products = list(Product.published.filter(pk__in=current_page.object_list).values(*fields))
+
+        return JsonResponse({'has_next_page': current_page.has_next(), 'products': products}, status=200)
