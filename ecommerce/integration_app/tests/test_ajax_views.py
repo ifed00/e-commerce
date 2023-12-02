@@ -79,6 +79,14 @@ class TestAJAXAuthenticationMixin(TestCase):
         self.assertFalse(answer['success'])
         self.assertEqual(res.status_code, 403)
 
+    def test_unauthenticated_access_returns_provided_error_msg(self):
+        res = self.client.post(reverse_lazy('auth_req_ajax'),
+                               {'name': 'MyNameIs', 'amount': 12},
+                               content_type='application/json')
+
+        answer = json.loads(res.content)
+        self.assertEqual(answer['error'], 'my custom message forbidden')
+
     def test_authenticated_access_is_OK(self):
         self.client.force_login(self.user)
 
@@ -129,6 +137,17 @@ class TestAddProductToOrderView(TestCase):
 
     def setUp(self):
         self.client.force_login(self.user)
+
+    def test_unauthorized_request_is_forbidden(self):
+        self.client.logout()
+
+        product_id = 5
+
+        response = self.client.post(reverse('order_add'),
+                                    {'product_id': product_id, 'amount': 2},
+                                    content_type='application/json')
+
+        self.assertEqual(response.status_code, 403)
 
     def test_correct_request_updates_existing_OrderProducts_entry(self):
         basket = Order.objects.create(user=self.user)  # creating basket to ensure its existence
@@ -189,7 +208,7 @@ class TestAddProductToOrderView(TestCase):
         buy_entry = OrderProducts.objects.get(order=basket, product_id=product_id)
         self.assertEqual(buy_entry.amount, 1)
 
-    def test_requesting_too_much_amount_produces_422_status_code_and_doesnt_change_state(self):
+    def test_requesting_too_much_amount_produces_422_status_code(self):
         product_id = 2
 
         response = self.client.post(reverse('order_add'),
@@ -200,6 +219,15 @@ class TestAddProductToOrderView(TestCase):
         self.assertFalse(answer['success'])
         self.assertEqual(response.status_code, 422)
         self.assertIn('error', answer)
+
+        self.assertEqual(Order.baskets.filter(user=self.user).count(), 0)
+
+    def test_requesting_too_much_amount_produces_doesnt_change_state(self):
+        product_id = 2
+
+        self.client.post(reverse('order_add'),
+                         {'product_id': product_id, 'amount': 300000},
+                         content_type='application/json')
 
         self.assertEqual(Order.baskets.filter(user=self.user).count(), 0)
 
@@ -215,3 +243,139 @@ class TestAddProductToOrderView(TestCase):
 
         self.assertEqual(amount_after_request + 2, amount_before_request)
 
+
+class TestDeleteProductFromOrderView(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        common_setup(cls)
+        cls.user = get_user_model().objects.create(username='Iam', password='Ami')
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def test_unauthorized_request_is_forbidden(self):
+        self.client.logout()
+
+        product_id = 5
+
+        response = self.client.post(reverse('order_delete'),
+                                    {'product_id': product_id, 'amount': 2},
+                                    content_type='application/json')
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_correct_request_updates_existing_OrderProducts_entry(self):
+        basket = Order.objects.create(user=self.user)
+        product_id = 2
+        buy_entry = OrderProducts.objects.create(order=basket,
+                                                 product_id=product_id,
+                                                 buying_price=100,
+                                                 buying_discount_percent=0,
+                                                 amount=12)
+
+        self.client.post(reverse('order_delete'),
+                         {'product_id': product_id, 'amount': 2},
+                         content_type='application/json')
+
+        buy_entry.refresh_from_db()
+        self.assertEqual(basket.products.filter(pk=product_id).count(), 1)
+        self.assertEqual(buy_entry.amount, 10)
+
+        # doesn't change:
+        self.assertEqual(buy_entry.buying_price, 100)
+        self.assertEqual(buy_entry.buying_discount_percent, 0)
+
+    def test_correct_request_deletes_existing_OrderProducts_entry_if_request_amount_gt_OrderProducts_amount(self):
+        basket = Order.objects.create(user=self.user)
+        product_id = 4
+        OrderProducts.objects.create(order=basket,
+                                     product_id=product_id,
+                                     buying_price=100,
+                                     buying_discount_percent=0,
+                                     amount=12)
+
+        self.client.post(reverse('order_delete'),
+                         {'product_id': product_id, 'amount': 22},
+                         content_type='application/json')
+
+        self.assertEqual(basket.products.filter(pk=product_id).count(), 0)
+
+    def test_requesting_not_existent_product_produces_NotFound(self):
+        Order.objects.create(user=self.user)
+        product_id = 4
+
+        response = self.client.post(reverse('order_delete'),
+                                    {'product_id': product_id, 'amount': 22},
+                                    content_type='application/json')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_requesting_with_non_existent_basket_produces_NotFound(self):
+        product_id = 4
+
+        response = self.client.post(reverse('order_delete'),
+                                    {'product_id': product_id, 'amount': 22},
+                                    content_type='application/json')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_correct_request_updates_corresponding_Product_entry(self):
+        basket = Order.objects.create(user=self.user)
+        product_id = 4
+        OrderProducts.objects.create(order=basket,
+                                     product_id=product_id,
+                                     buying_price=100,
+                                     buying_discount_percent=0,
+                                     amount=3)
+        product_id = 4
+        amount_before_request = Product.published.get(pk=product_id).units_available
+
+        self.client.post(reverse('order_delete'),
+                         {'product_id': product_id, 'amount': 2},
+                         content_type='application/json')
+
+        amount_after_request = Product.published.get(pk=product_id).units_available
+
+        self.assertEqual(amount_after_request, amount_before_request + 2)
+
+    def test_correct_request_with_amount_above_available_updates_corresponding_Product_entry_correctly(self):
+        basket = Order.objects.create(user=self.user)
+        product_id = 2
+        actual_amount = 3
+        OrderProducts.objects.create(order=basket,
+                                     product_id=product_id,
+                                     buying_price=100,
+                                     buying_discount_percent=0,
+                                     amount=actual_amount)
+        product_id = 2
+        amount_before_request = Product.published.get(pk=product_id).units_available
+
+        amount_to_delete = 5
+        self.assertGreater(amount_to_delete, actual_amount)
+
+        self.client.post(reverse('order_delete'),
+                         {'product_id': product_id, 'amount': amount_to_delete},
+                         content_type='application/json')
+
+        amount_after_request = Product.published.get(pk=product_id).units_available
+
+        self.assertEqual(amount_after_request, amount_before_request + actual_amount)
+
+    def test_missing_amount_key_uses_1_as_default(self):
+        basket = Order.objects.create(user=self.user)
+        product_id = 4
+        OrderProducts.objects.create(order=basket,
+                                     product_id=product_id,
+                                     buying_price=100,
+                                     buying_discount_percent=0,
+                                     amount=3)
+        product_id = 4
+        amount_before_request = Product.published.get(pk=product_id).units_available
+
+        self.client.post(reverse('order_delete'),
+                         {'product_id': product_id},
+                         content_type='application/json')
+
+        amount_after_request = Product.published.get(pk=product_id).units_available
+
+        self.assertEqual(amount_after_request, amount_before_request + 1)

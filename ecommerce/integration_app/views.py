@@ -203,9 +203,20 @@ class DeleteProductFromOrderView(AJAXAuthRequiredMixin, AJAXPostView):
         product = self.cleaned_data['product_id']
         amount = self.cleaned_data['amount']
 
-        basket = Order.baskets.get(user=self.request.user)
+        try:
+            basket = Order.baskets.get(user=self.request.user)
+        except Order.DoesNotExist:
+            self.status = 404
+            self.response_data['error'] = 'no basket for the user exists'
+            return
 
-        detail = OrderProducts.objects.get(order=basket, product=product)
+        try:
+            detail = OrderProducts.objects.get(order=basket, product=product)
+        except OrderProducts.DoesNotExist:
+            self.status = 404
+            self.response_data['error'] = 'no such product in the basket'
+            return
+
         released_amount = min(detail.amount, amount)
         if detail.amount <= amount:
             detail.delete()
