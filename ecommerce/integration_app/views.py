@@ -106,8 +106,8 @@ class SearchView(ListView):
             raise ValueError('Bad request')
         user_query = self.request.GET['q']
 
-        search_engine = SearchCatalog(['name', 'category__name'])
-        search_results = search_engine.filter(user_query, Product.published.all().prefetch_related('category'))
+        search_engine = SearchCatalog()
+        search_results = search_engine.filter(user_query)
 
         return search_results
 

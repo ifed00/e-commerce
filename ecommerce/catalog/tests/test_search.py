@@ -59,17 +59,15 @@ class TestSearchCatalog(TestCase):
         common_setup(cls)
 
     def test_no_query_raises_NoQuerySpecified_exception(self):
-        qs = Product.published.all()
-
-        search_engine = SearchCatalog(['name'])
+        search_engine = SearchCatalog()
         with self.assertRaises(SearchCatalog.NoQuerySpecified):
-            search_engine.filter('', qs)
+            search_engine.filter('')
 
     def test_show_first_parameter_restricts_showed_products(self):
         qs = Product.published.all()
 
-        search_engine = SearchCatalog(['name'], show_first=1)
-        result = search_engine.filter('l', qs)
+        search_engine = SearchCatalog(show_first=1)
+        result = search_engine.filter('l')
 
         self.assertEqual(len(result), 2)
 
