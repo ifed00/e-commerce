@@ -9,7 +9,12 @@
 <body>
 <header>
     <li><a href="{% url 'index' %}">Main page</a></li>
+    {% if user.is_authenticated %}
     <li><a href="{% url 'profile' %}">Your profile, {{ user.username }}</a></li>
+    <li><a href="{% url 'logout' %}">Log out</a></li>
+    {% else %}
+    <li><a href="{% url 'login' %}">Log in</a></li>
+    {% endif %}
     <hr>
 </header>
 {% block content %}{% endblock content %}

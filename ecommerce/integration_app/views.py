@@ -131,7 +131,7 @@ class OrderView(LoginRequiredMixin, ListView):
         if self.order.user.id != self.request.user.id:
             raise PermissionDenied
 
-        return OrderProducts.objects.filter(order=order).select_related('product')
+        return OrderProducts.objects.filter(order=order).select_related('product').prefetch_related('product__category')
 
     def get_context_data(self, *, object_list=None, **kwargs):
         context = super().get_context_data(objects_list=object_list, **kwargs)
