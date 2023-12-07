@@ -1,6 +1,12 @@
 {% extends 'base_template.html' %}
 
+{% block title %}Your orders{% endblock title %}
+
 {% block content %}
+
+{% block leftmenu %}
+<a href="{% url 'password_change' %}">Change password</a>
+{% endblock leftmenu %}
 
 {% block orders %}
 <div>Your orders, {{ user.username }}:</div>

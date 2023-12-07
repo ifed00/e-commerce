@@ -1,1 +1,9 @@
- {% extends "admin/login.html" %}
+{% extends 'base_template.html' %}
+
+{% block content %}
+<form method="POST" action="{% url 'login' %}">
+    {% csrf_token %}
+    {{ form }}
+    <input type="submit" value="Log in">
+</form>
+{% endblock content %}
