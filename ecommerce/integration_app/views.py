@@ -1,12 +1,15 @@
 import random
 
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
 from django.core.paginator import Paginator, EmptyPage
 from django.db.models import QuerySet, F
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 
@@ -145,6 +148,8 @@ class ProfileView(LoginRequiredMixin, ListView):
     template_name = 'profile.html'
     context_object_name = 'orders'
 
+    login_url = reverse_lazy('login')
+
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user)
 
@@ -257,3 +262,18 @@ class GetRandomProductsView(View):
         products = list(Product.published.filter(pk__in=current_page.object_list).values(*fields))
 
         return JsonResponse({'has_next_page': current_page.has_next(), 'products': products}, status=200)
+
+
+class SignUpView(CreateView):
+    model = get_user_model()
+    form_class = UserCreationForm
+
+    success_url = reverse_lazy('profile')
+
+    template_name = 'registration/signup.html'
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect(reverse_lazy('index'))
+
+        return super().dispatch(request, *args, **kwargs)
