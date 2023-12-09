@@ -6,20 +6,24 @@ from django.db.models import Q, QuerySet, Count, Case, When, Value
 from catalog.models import Product, Category
 
 
+def make_Q(field: str, token: str) -> Q:
+    lookup = dict()
+    lookup[field + '__icontains'] = token
+    return Q(**lookup)
+
+
 class SearchBase:
     def __init__(self, fields: List[str]):
         self.fields = fields
 
     def _filter(self, query: str, queryset: QuerySet) -> QuerySet:
         tokens = query.split()
-        result_query = Q()
+        result_Q = Q()
         for token in tokens:
             for field in self.fields:
-                lookup = dict()
-                lookup[field + '__icontains'] = token
-                result_query = result_query | Q(**lookup)
+                result_Q = result_Q | make_Q(field, token)
 
-        return queryset.filter(result_query)
+        return queryset.filter(result_Q)
 
 
 class SearchCategory(SearchBase):
@@ -48,18 +52,18 @@ class SearchCatalog:
             raise self.NoQuerySpecified()
 
         tokens = query.split()
-        result_query = Q()
+        result_Q = Q()
         for token in tokens:
-            result_query = result_query | Q(name__icontains=token)
+            result_Q = result_Q | make_Q('name', token)
 
-        categories = Category.objects.annotate(whole_match=Case(When(result_query, then=Value(1)), default=Value(0)))
+        categories = Category.objects.annotate(whole_match=Case(When(result_Q, then=Value(1)), default=Value(0)))
 
         search_results = list()
         for c in categories:
             if c.whole_match:
                 qs = c.product_set.all()
             else:
-                qs = c.product_set.filter(result_query)
+                qs = c.product_set.filter(result_Q)
 
             found = qs.count()
 
