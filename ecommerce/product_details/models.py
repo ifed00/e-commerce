@@ -157,7 +157,7 @@ class GiftWrapDetails(BaseDetails):
     FILTERS = [
         ('length_cm', Filters.BOUND),
         ('width_cm', Filters.BOUND),
-        ('density', Filters.BOUND),
+        ('density', Filters.DYNAMIC_CHOICES),
         ('has_accent', Filters.BOOL_CHOICES),
         ('has_print', Filters.BOOL_CHOICES),
         ('is_monochrome', Filters.BOOL_CHOICES),

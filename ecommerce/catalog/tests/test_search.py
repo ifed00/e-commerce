@@ -59,17 +59,43 @@ class TestSearchCatalog(TestCase):
         common_setup(cls)
 
     def test_no_query_raises_NoQuerySpecified_exception(self):
-        qs = Product.published.all()
-
-        search_engine = SearchCatalog(['name'])
+        search_engine = SearchCatalog()
         with self.assertRaises(SearchCatalog.NoQuerySpecified):
-            search_engine.filter('', qs)
+            search_engine.filter('')
+
+    def test_tokens_concatenated_using_or_logic(self):
+        search_engine = SearchCatalog()
+
+        result = search_engine.filter('icall galaxy')
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].found, 2)
+
+    def test_searches_in_product_name_and_category_name(self):
+        search_engine = SearchCatalog()
+
+        result = search_engine.filter('i')
+
+        self.assertEqual(len(result), 2)
+        for entry in result:
+            if entry.category == Category.objects.get(name='phones'):
+                self.assertFalse(entry.whole_category)
+            elif entry.category == Category.objects.get(name='fridges'):
+                self.assertTrue(entry.whole_category)
+            else:
+                self.assertFalse(True)
+
+    def test_whole_category_match_produce_no_in_category_filtering(self):
+        search_engine = SearchCatalog(show_first=10)
+
+        result = search_engine.filter('phones')
+
+        self.assertTrue(result[0].whole_category)
+        self.assertEqual(len(result[0].first_found_products), 3)
 
     def test_show_first_parameter_restricts_showed_products(self):
-        qs = Product.published.all()
-
-        search_engine = SearchCatalog(['name'], show_first=1)
-        result = search_engine.filter('l', qs)
+        search_engine = SearchCatalog(show_first=1)
+        result = search_engine.filter('l')
 
         self.assertEqual(len(result), 2)
 
@@ -78,11 +104,9 @@ class TestSearchCatalog(TestCase):
 
         for r in result:
             if r.category == phones_cat:
-                self.assertEqual(r.found, 2)
-                self.assertEqual(len(r.first_found_products), 1)
+                self.assertNotEqual(len(r.first_found_products), r.found)
             elif r.category == fridges_cat:
-                self.assertEqual(r.found, 1)
-                self.assertEqual(len(r.first_found_products), 1)
+                self.assertEqual(len(r.first_found_products), r.found)
             else:
                 self.assertTrue(False)
 

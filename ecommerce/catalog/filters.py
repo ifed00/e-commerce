@@ -153,7 +153,7 @@ class FilterDynamicChoices(FilterChoicesBase):
     """ Filters by field with arbitrary variants (e.g. manufacturer), available variants determined by DB request """
     def __init__(self, field: str, queryset: QuerySet, **kwargs):
         super().__init__(field, **kwargs)
-        self.choices = {str(choice): False for choice in queryset.values_list(self.query_name, flat=True)}
+        self.choices = {str(choice): False for choice in queryset.values_list(self.query_name, flat=True).distinct()}
 
 
 class FilterBool(FilterBase):

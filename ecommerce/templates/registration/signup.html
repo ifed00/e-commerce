@@ -1,9 +1,9 @@
 {% extends 'base_template.html' %}
 
 {% block content %}
-<form method="POST" action="{% url 'login' %}">
+<form method="POST" action="{% url 'signup' %}">
     {% csrf_token %}
     {{ form }}
-    <input type="submit" value="Log in">
+    <input type="submit" value="Sign up">
 </form>
 {% endblock content %}

@@ -4,8 +4,8 @@
 
 {% block search_results %}
 {% for cat in categories %}
-    {% with category=cat.category found=cat.found products=cat.first_found_products %}
-    <div><a href="{% url 'category' slug=category.slug %}?{{query}}">{{ category.name }}</a>: {{ found }}</div>
+    {% with category=cat.category found=cat.found products=cat.first_found_products whole_match=cat.whole_category %}
+    <div><a href="{% url 'category' slug=category.slug %}{% if not whole_match %}?{{query}}{% endif %}">{{ category.name }}</a>: {{ found }}</div>
     <ul>
         {% for p in products %}
             <li><a href="{% url 'product' cat_slug=category.slug id=p.pk %}">{{p.name}}!</a></li>
