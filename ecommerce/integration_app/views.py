@@ -11,8 +11,7 @@ from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import ListView, DetailView, CreateView
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
-
+from django.core.exceptions import PermissionDenied, BadRequest
 
 from catalog.filters import FilterFactory, Filters
 from catalog.models import Category, Product, BaseDetails
@@ -105,12 +104,11 @@ class SearchView(ListView):
     context_object_name = 'categories'
 
     def get_queryset(self):
-        if 'q' not in self.request.GET:
-            raise ValueError('Bad request')
-        user_query = self.request.GET['q']
-
         search_engine = SearchCatalog()
-        search_results = search_engine.filter(user_query)
+        try:
+            search_results = search_engine.filter(self.request.GET.get('q'))
+        except SearchCatalog.NoQuerySpecified:
+            raise BadRequest('Query missing')
 
         return search_results
 
